@@ -1,0 +1,134 @@
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+body {
+	font-family: Arial, Helvetica, Sans-serif, Verdana, Tahoma;
+}
+
+.login-container {
+	position: relative;
+	width: 100%;
+	height: 100vh;
+    background-image: url(/audit-frontEnd/src/assets/images/loginbg.png);
+    background-size: cover;
+}
+
+.login-content {
+	position: relative;
+	top: 50%;
+	left: 90%;
+	width: 500px;
+	height: 800px;
+	background: rgba(255, 255, 255, 0.9);
+	box-shadow: 0px 2px 30px 0px rgba(0, 0, 0, 0.7);
+	border-radius: 8px;
+	margin-left: -400px;
+	transform: translateY(-50%);
+}
+
+
+.login-form {
+	width: 500px;
+	height: 800px;
+	padding: 24px 48px;
+	box-sizing: border-box;
+	position: relative;
+}
+
+.login-form > .title {
+    text-align: center;
+    font-size: 28px;
+    color: #272727;
+    margin-bottom: 130px;
+    font-weight: 700;
+}
+
+.login-form > h2 {
+    text-align: center;
+    font-size: 20px;
+    color: #000000;
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+.input-group {
+	position: relative;
+	margin-bottom: 30px;
+}
+
+.input-group > span {
+	display: block;
+	color: #272727;
+	font-size: 17px;
+	line-height: 14px;
+	margin-bottom: 15px;
+	font-weight: 600;
+}
+
+.input-group > input[type="text"],
+.input-group > input[type="password"] {
+	width: 400px;
+	height: 40px;
+	border-radius: 2px;
+	border: 1px solid rgba(229, 229, 229, 1);
+	padding: 0 10px;
+	outline: none;
+}
+
+.input-group > input[type="text"]:focus,
+.input-group > input[type="password"]:focus {
+	border-color: #3B82FF;
+}
+
+.input-group > input::placeholder {
+	color: #c8c8c8;
+}
+
+.error-msg {
+	margin-bottom: 10px;
+}
+
+.error-msg span {
+	color: red;
+	font-size: 12px;
+}
+
+.login-btn {
+	display: inline-block;
+	width: 400px;
+	height: 44px;
+	margin-top: 22px;
+	background: linear-gradient(135deg, #4585f4, #3b82ff);
+	border-radius: 4px;
+	color: #fff;
+	font-size: 16px;
+	text-align: center;
+	line-height: 44px;
+	cursor: pointer;
+	box-shadow: 0 4px 8px rgba(69, 133, 244, 0.3);
+	transition: all 0.3s ease;
+}
+
+.login-btn:hover {
+	box-shadow: 0 6px 12px rgba(69, 133, 244, 0.4);
+	transform: translateY(-2px);
+}
+
+.register-btn {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    width: 100px;
+    height: 30px;
+    background: #e0e0e0;
+    border-radius: 2px;
+    color: #000;
+    font-size: 12px;
+    text-align: center;
+    line-height: 30px;
+    cursor: pointer;
+    text-decoration: none;
+}

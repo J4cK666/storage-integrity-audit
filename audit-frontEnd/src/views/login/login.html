@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录</title>
+    <link rel="stylesheet" href="./login.css">
+    <script src="./login.js"></script>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-content">
+            <form id="loginForm" name="loginForm" action="" method="post">
+                <div class="login-form">
+                    <h1 class="title">存储完整性审计系统</h1>
+                    <h2>用户登录</h2>
+                    <div class="input-group">
+                        <span>账号</span>
+                        <input type="text" id="userAccount" name="userAccount" placeholder="请输入账号">
+                    </div>
+                    <div class="input-group">
+                        <span>密码</span>
+                        <input type="password" id="userPassword" name="userPassword" placeholder="请输入密码">
+                    </div>
+                    <div class="error-msg">
+                        <span id="showMsg">用户名或密码错误</span>
+                    </div>
+                    <a class="login-btn" id="btn-login" onclick="test()">登录</a>
+                    <a class="register-btn" id="register-link">注册</a>
+                    <input name="encoded" id="encoded" type="hidden" value="">
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
