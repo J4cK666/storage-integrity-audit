@@ -1,0 +1,10 @@
+
+
+CREATE TABLE users (
+  account_id CHAR(10) NOT NULL PRIMARY KEY CHECK (account_id REGEXP '^[0-9]{10}$'),
+  username VARCHAR(255) NOT NULL,
+  password VARCHAR(255) NOT NULL,
+  public_key TEXT,
+  private_key TEXT
+);
+
