@@ -1,34 +1,61 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>注册</title>
-    <link rel="stylesheet" href="register.css">
+    <title>用户注册</title>
+    <link rel="icon" type="image/png" href="../../assets/logo/logo.png">
+    <link rel="stylesheet" href="./register.css">
+    <script src="./register.js" defer></script>
 </head>
 <body>
-    <div class="register-container">
-        <h1 class="title">存储完整性审计系统</h1>
-        <h2>用户注册</h2>
-        <form>
-            <div>
-                <label for="username">用户名</label>
-                <input type="text" id="username" name="username" required>
-            </div>
-            <div>
-                <label for="password">密码</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-            <div>
-                <label for="confirmPassword">确认密码</label>
-                <input type="password" id="confirmPassword" name="confirmPassword" required>
-            </div>
-            <button type="submit">注册</button>
-        </form>
-        <div class="login-link">
-            已有账号？<a id="login-link">去登录</a>
-        </div>
+    <div class="register-shell">
+        <a class="back-home" href="../../../index.html">返回首页</a>
+
+        <main class="register-layout">
+            <section class="brand-panel">
+                <div class="brand-top">
+                    <img class="brand-logo" src="../../assets/logo/logo.png" alt="logo">
+                    <div>
+                        <p class="brand-name">基于关键词的存储完整性审计系统</p>
+                        <p class="brand-subtitle">Keyword Integrity Audit System</p>
+                    </div>
+                </div>
+
+                <div class="brand-copy">
+                    <span class="eyebrow">Secure Register</span>
+                    <h1>创建你的平台账户，开始完整性审计之旅</h1>
+                </div>
+            </section>
+
+            <section class="form-panel">
+                <form class="register-form">
+                    <div class="form-head">
+                        <p class="form-tag">New Account</p>
+                        <h2>用户注册</h2>
+                        <p class="form-desc">请填写用户名和密码，创建新账号。</p>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="username">用户名</label>
+                        <input type="text" id="username" name="username" placeholder="请输入用户名" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="password">密码</label>
+                        <input type="password" id="password" name="password" placeholder="请输入密码" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="confirmPassword">确认密码</label>
+                        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="请再次输入密码" required>
+                    </div>
+
+                    <button class="register-btn" type="submit">立即注册</button>
+                    <a class="login-link" id="login-link" href="../login/login.html">已有账号？去登录</a>
+                </form>
+            </section>
+        </main>
     </div>
-    <script src="register.js"></script>
 </body>
 </html>

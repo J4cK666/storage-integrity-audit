@@ -1,36 +1,62 @@
-<!DOCTYPE html>
-<html lang="en">
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>登录</title>
+    <title>用户登录</title>
+    <link rel="icon" type="image/png" href="../../assets/logo/logo.png">
     <link rel="stylesheet" href="./login.css">
-    <script src="./login.js"></script>
+    <script src="./login.js" defer></script>
 </head>
 <body>
-    <div class="login-container">
-        <div class="login-content">
-            <form id="loginForm" name="loginForm" action="" method="post">
-                <div class="login-form">
-                    <h1 class="title">存储完整性审计系统</h1>
-                    <h2>用户登录</h2>
+    <div class="login-shell">
+        <a class="back-home" href="../../../index.html">返回首页</a>
+
+        <main class="login-layout">
+            <section class="brand-panel">
+                <div class="brand-top">
+                    <img class="brand-logo" src="../../assets/logo/logo.png" alt="logo">
+                    <div>
+                        <p class="brand-name">基于关键词的存储完整性审计系统</p>
+                        <p class="brand-subtitle">Keyword Integrity Audit System</p>
+                    </div>
+                </div>
+
+                <div class="brand-copy">
+                    <span class="eyebrow">Secure Login</span>
+                    <h1>进入平台，开始你的关键词审计流程</h1>
+                </div>
+
+            </section>
+
+            <section class="form-panel">
+                <form id="loginForm" name="loginForm" action="" method="post" class="login-form">
+                    <div class="form-head">
+                        <p class="form-tag">User Access</p>
+                        <h2>用户登录</h2>
+                        <p class="form-desc">请输入账号和密码，进入系统工作台。</p>
+                    </div>
+
                     <div class="input-group">
-                        <span>账号</span>
+                        <label for="userAccount">账号</label>
                         <input type="text" id="userAccount" name="userAccount" placeholder="请输入账号">
                     </div>
+
                     <div class="input-group">
-                        <span>密码</span>
+                        <label for="userPassword">密码</label>
                         <input type="password" id="userPassword" name="userPassword" placeholder="请输入密码">
                     </div>
+
                     <div class="error-msg">
                         <span id="showMsg">用户名或密码错误</span>
                     </div>
-                    <a class="login-btn" id="btn-login" onclick="test()">登录</a>
-                    <a class="register-btn" id="register-link">注册</a>
+
+                    <button class="login-btn" id="btn-login" type="button" onclick="test()">立即登录</button>
+                    <a class="register-btn" id="register-link" href="../register/register.html">没有账号？立即注册</a>
                     <input name="encoded" id="encoded" type="hidden" value="">
-                </div>
-            </form>
-        </div>
+                </form>
+            </section>
+        </main>
     </div>
 </body>
 </html>

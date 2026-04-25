@@ -1,11 +1,247 @@
-<!DOCTYPE html>
-<html lang="en">
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>基于关键词的存储完整性审计系统</title>
+    <link rel="icon" type="image/png" href="./src/assets/logo/logo.png">
+    <link rel="stylesheet" href="./index.css">
 </head>
 <body>
-    
+    <div class="page-shell">
+        <header class="nav">
+            <div class="brand">
+                <img class="brand-mark" src="./src/assets/logo/logo.png" alt="logo">
+                <div class="brand-copy">
+                    <p class="brand-title">基于关键词的存储完整性审计系统</p>
+                    <p class="brand-subtitle">关键词驱动的审计查询、完整性验证</p>
+                </div>
+            </div>
+            <div class="nav-actions">
+                <a class="nav-link" href="#roles">算法流程</a>
+                <a class="nav-link" href="#interaction">交互协同</a>
+                <a class="start-button" href="./src/views/login/login.html">立即开始</a>
+            </div>
+        </header>
+
+        <main>
+            <section class="hero">
+                <div class="hero-left">
+                    <span class="eyebrow">Keyword Integrity Audit</span>
+                    <h1 class="hero-title">让<span class="accent">关键词</span>成为存储审计的精准入口</h1>
+                    <p class="hero-desc">
+                        以关键词搜索为核心线索，将用户生成的安全索引、云端的审计证明与 TPA 的验证能力连接起来，实现“查得到、验得准、证得明”。
+                    </p>
+                    <div class="keyword-row">
+                        <span class="keyword-chip">关键词索引</span>
+                        <span class="keyword-chip">搜索陷门</span>
+                        <span class="keyword-chip">验证器生成</span>
+                        <span class="keyword-chip">审计证明</span>
+                        <span class="keyword-chip">TPA 校验</span>
+                    </div>
+
+                    <div class="hero-grid">
+                        <div>
+                            <div class="carousel">
+                                <div class="carousel-track">
+                                    <div class="slide">
+                                        <img src="./src/assets/images/index.png" alt="index preview slide 1">
+                                        <div class="slide-caption">
+                                            <strong>关键词定位目标文件</strong>
+                                            <span>将用户查询与加密索引对应，优先聚焦包含目标关键词的文件集合。</span>
+                                        </div>
+                                    </div>
+                                    <div class="slide">
+                                        <img src="./src/assets/images/index1.png" alt="index preview slide 2">
+                                        <div class="slide-caption">
+                                            <strong>用户查询驱动 TPA 审计挑战</strong>
+                                            <span>用户发起关键词查询后，云端协同 TPA 完成面向目标文件的审计挑战与验证闭环。</span>
+                                        </div>
+                                    </div>
+                                    <div class="slide">
+                                        <img src="./src/assets/images/index2.png" alt="index preview slide 3">
+                                        <div class="slide-caption">
+                                            <strong>加密索引向量与安全映射生成</strong>
+                                            <span>围绕关键词、加密处理与安全映射关系构建加密索引向量。</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="carousel-dots" aria-hidden="true">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hero-right">
+                    <div class="panel-top">
+                        <p class="panel-label">关键词审计</p>
+                        <p class="panel-title">从关键词查询到审计验证的一体化路径</p>
+                    </div>
+
+                    <div class="search-card">
+                        <div class="search-top">
+                            <div class="search-input">keyword = “密文块”</div>
+                            <div class="search-status">Trapdoor Ready</div>
+                        </div>
+                        <div class="trapdoor-flow">
+                            <div class="flow-row">
+                                <strong>index_gen</strong>
+                                <span>secure index matched</span>
+                            </div>
+                            <div class="flow-bar"><span style="width: 86%;"></span></div>
+                            <div class="flow-row">
+                                <strong>chall_gen</strong>
+                                <span>TPA challenge packed</span>
+                            </div>
+                            <div class="flow-bar"><span style="width: 72%;"></span></div>
+                            <div class="flow-row">
+                                <strong>proof_gen</strong>
+                                <span>cloud proof returned</span>
+                            </div>
+                            <div class="flow-bar"><span style="width: 92%;"></span></div>
+                        </div>
+                    </div>
+
+                    <div class="metrics">
+                        <div class="metric-card">
+                            <span>关键词命中文件</span>
+                            <strong>128</strong>
+                        </div>
+                        <div class="metric-card">
+                            <span>审计完整性</span>
+                            <strong>99.97%</strong>
+                        </div>
+                        <div class="metric-card">
+                            <span>验证效率</span>
+                            <strong>0.8s</strong>
+                        </div>
+                        <div class="metric-card">
+                            <span>索引生成时间</span>
+                            <strong>1.2s</strong>
+                        </div>
+                    </div>
+
+                    <div class="proof-card">
+                        <span>Proof_Verify</span>
+                        <strong>TPA verified</strong>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="roles">
+                <div class="section-header">
+                    <h2>算法流程</h2>
+                </div>
+
+                <div class="roles-grid">
+                    <article class="role-card">
+                        <span class="role-tag">User</span>
+                        <h3>用户</h3>
+                        <p>
+                            用户负责系统初始化、文件处理、关键词索引生成以及审计查询准备，是整个关键词审计链路的入口。
+                        </p>
+                        <div class="algo-list">
+                            <div class="algo-item">
+                                <strong>Init</strong>
+                                <span>初始化系统参数，例如密钥等加密参数。</span>
+                            </div>
+                            <div class="algo-item">
+                                <strong>Setup</strong>
+                                <span>将文件拆分、加密并准备上传到云端。</span>
+                            </div>
+                            <div class="algo-item">
+                                <strong>IndexGenerate</strong>
+                                <span>构建安全索引，为关键词搜索与审计定位提供依据。</span>
+                            </div>
+                            <div class="algo-item">
+                                <strong>AuthenticatorGenerate</strong>
+                                <span>为每个加密数据块生成验证器。</span>
+                            </div>
+                            <div class="algo-item">
+                                <strong>TrapdoorGenerate</strong>
+                                <span>根据查询关键词生成用于审计的搜索陷门。</span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="role-card">
+                        <span class="role-tag">Cloud</span>
+                        <h3>云端</h3>
+                        <p>
+                            云端持有被加密存储的文件与相关辅助信息，在接收到 TPA 挑战后快速生成可验证的审计证明。
+                        </p>
+                        <div class="algo-list">
+                            <div class="algo-item">
+                                <strong>ProofGenerate</strong>
+                                <span>根据 TPA 发出的挑战和关键词查询范围生成审计证明。</span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="role-card">
+                        <span class="role-tag">TPA</span>
+                        <h3>TPA</h3>
+                        <p>
+                            TPA 作为第三方审计者，根据用户提供的搜索陷门生成挑战，并对云端返回的证明执行完整性验证。
+                        </p>
+                        <div class="algo-list">
+                            <div class="algo-item">
+                                <strong>ChallengeGenerate</strong>
+                                <span>根据搜索陷门生成审计挑战，将审计聚焦到包含目标关键词的文件集。</span>
+                            </div>
+                            <div class="algo-item">
+                                <strong>ProofVerify</strong>
+                                <span>验证云端生成的审计证明，检查目标文件的完整性。</span>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="section" id="interaction">
+                <div class="section-header">
+                    <h2>关键词审计交互协同</h2>
+                </div>
+
+                <div class="interaction-panel">
+                    <div class="flow-panel">
+                        <h3>三方协同审计</h3>
+                        <div class="audit-triangle">
+                            <article class="audit-node audit-cloud">
+                                <span class="audit-role">Cloud</span>
+                                <strong>云端存储与证明生成</strong>
+                            </article>
+
+                            <article class="audit-node audit-user">
+                                <span class="audit-role">User</span>
+                                <strong>用户初始化、上传与索引构建</strong>
+                            </article>
+
+                            <article class="audit-node audit-tpa">
+                                <span class="audit-role">TPA</span>
+                                <strong>第三方挑战与完整性验证</strong>
+                            </article>
+
+                            <span class="audit-arrow arrow-user-cloud"></span>
+                            <span class="audit-arrow arrow-cloud-tpa"></span>
+                            <span class="audit-arrow arrow-tpa-user"></span>
+
+                            <span class="audit-label label-user-cloud">Upload / Index</span>
+                            <span class="audit-label label-cloud-tpa">Proof</span>
+                            <span class="audit-label label-tpa-user">Challenge / Result</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            基于关键词的存储完整性审计系统 | User - Cloud - TPA Collaborative Audit Workflow
+        </footer>
+    </div>
 </body>
 </html>

@@ -1,10 +1,44 @@
-
+PRAGMA foreign_keys = ON;
 
 CREATE TABLE users (
-  account_id CHAR(10) NOT NULL PRIMARY KEY CHECK (account_id REGEXP '^[0-9]{10}$'),
-  username VARCHAR(255) NOT NULL,
-  password VARCHAR(255) NOT NULL,
-  public_key TEXT,
-  private_key TEXT
+  account_id TEXT NOT NULL PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CHECK (length(account_id) = 10 AND account_id GLOB '[0-9]*')
 );
 
+CREATE TABLE user_crypto_keys (
+  account_id TEXT NOT NULL PRIMARY KEY,
+  public_key TEXT NOT NULL,
+  private_key TEXT NOT NULL,
+  g TEXT NOT NULL,
+  u TEXT NOT NULL,
+  k0 BLOB NOT NULL,
+  k1 BLOB NOT NULL,
+  k2 BLOB NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_user_crypto_keys_user
+    FOREIGN KEY (account_id) REFERENCES users(account_id)
+    ON DELETE CASCADE
+);
+
+CREATE TRIGGER trg_users_updated_at
+AFTER UPDATE ON users
+FOR EACH ROW
+BEGIN
+  UPDATE users
+  SET updated_at = CURRENT_TIMESTAMP
+  WHERE account_id = OLD.account_id;
+END;
+
+CREATE TRIGGER trg_user_crypto_keys_updated_at
+AFTER UPDATE ON user_crypto_keys
+FOR EACH ROW
+BEGIN
+  UPDATE user_crypto_keys
+  SET updated_at = CURRENT_TIMESTAMP
+  WHERE account_id = OLD.account_id;
+END;
