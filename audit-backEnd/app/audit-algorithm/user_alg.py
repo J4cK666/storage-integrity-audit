@@ -114,6 +114,7 @@ def setup(file_dict: dict):
     print("Index build complete.")
     print("===== Setup Finished =====")
 
+
     return EncryptedFiles, V
 
 
