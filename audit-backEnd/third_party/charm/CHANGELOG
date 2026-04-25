@@ -1,0 +1,193 @@
+v0.63 release (Lattice-based / post-quantum cryptography)
+---------------------------------------------------------
+Added:
+- Lattice-based (post-quantum) cryptography module
+  - C++ extension (charm.core.math.lattice) backed by NTL library
+    - Polynomial ring arithmetic in R_q = Z_q[X]/(X^n+1)
+    - CDT-based discrete Gaussian sampling
+    - Vector/matrix operations for Module-LWE schemes
+    - Compress/decompress, CBD sampling, matrix transpose
+    - SHA-256 deterministic hashing to ring elements
+    - Full serialization/deserialization
+  - Python wrapper (charm.toolbox.latticegroup.LatticeGroup)
+    - API consistent with PairingGroup / ECGroup / IntegerGroup
+    - Named parameter sets: RLWE-256-7681, RLWE-512-12289, KYBER-512/768/1024, DILITHIUM-2/3/5
+    - Custom parameters via LatticeGroup(n=512, q=12289)
+  - LatticeKEM and LatticeSig abstract base classes
+  - Four lattice-based schemes:
+    - RLWE-PKE (rlwe_pke.py): Ring-LWE public key encryption (LPR)
+    - Kyber KEM (kyber_kem.py): Simplified ML-KEM (FIPS 203) key encapsulation
+    - Dilithium Sig (dilithium_sig.py): Simplified ML-DSA (FIPS 204) digital signatures
+    - Lattice IBE (lattice_ibe_abb10.py): Simplified ABB10 identity-based encryption
+  - 44 new tests for lattice module and schemes
+  - Opt-in build via LAT_MOD=yes (requires NTL library)
+- NTL library detection in build system (pkg-config, Homebrew, standard paths)
+- --enable-lattice flag in configure.sh
+- NTL install and lattice module build in all CI jobs
+
+Fixed:
+- Python 3.13+: Fixed enum name-mangling crash (EnumValue.__value -> _EnumValue__value)
+- Python 3.13+: Fixed param_info being None when config.py is unconfigured
+- Python 3.12: Fixed segfault during interpreter shutdown in C extensions
+- Benchmark timing units (#309): Renamed cpu_time_ms/real_time_ms to cpu_time_secs/real_time_secs;
+  fixed Benchmark_print CPU label from 'ms' to 's'
+- Kyber-512: Fixed noise parameter — use sqrt(eta/2) as Gaussian sigma to match CBD variance
+- config.dist.py: Restored trailing spaces required by setup.py string replacement
+
+Changed:
+- Removed obsolete .travis.yml
+- Updated Dockerfile maintainer
+
+Security:
+- Fixed 13 vulnerabilities identified in security audit
+- Disabled unsafe pickle deserialization by default in protocol module
+
+v0.62 release (ZKP compiler, BLS/Schnorr signatures, threshold sharing)
+-----------------------------------------------------------------------
+Added:
+- ZKP compiler with Schnorr, DLEQ, AND/OR composition, range proofs, batch verification
+- BLS signatures and Schnorr signatures with NIST test vectors
+- Threshold sharing (Feldman VSS, Pedersen VSS)
+- Hypothesis-based property tests for ABE schemes
+- Cross-platform install script (install_charm.sh)
+
+Fixed:
+- Policy parser robustness improvements
+- Cross-platform compatibility in install script
+
+Security:
+- Weak curve deprecation warnings (SS512, MNT159, MNT201)
+
+
+v0.61.1 release (PyPI installation fix)
+---------------------------------------
+- Fixed PyPI installation failure (AttributeError: 'NoneType' object has no attribute 'split')
+  - Added platform-aware default configuration for PyPI installation when config.mk doesn't exist
+  - Added pkg-config support for dynamic library detection on Linux/macOS
+  - Merges pkg-config results with fallback paths to handle libraries without .pc files (e.g., PBC)
+- Added read_version_file() to read version from VERSION file during PyPI installation
+- Fixed opt.get() calls to use default empty strings for LDFLAGS/CPPFLAGS
+- Improved cross-platform support:
+  - macOS: Detects Homebrew paths (Apple Silicon /opt/homebrew and Intel /usr/local)
+  - Linux: Uses standard paths (/usr/local/lib, /usr/lib, /usr/local/include, /usr/include)
+
+v0.61 release (Python 3.13 and 3.14 support)
+--------------------------------------------
+- Full Python 3.13 compatibility with fixes for removed private APIs:
+  - Replaced _Py_IsFinalizing() with public Py_IsFinalizing() API
+  - Replaced _PyLong_Format() with PyObject_Str() for integer-to-string conversion
+  - Fixed PyUnicode_DATA() usage to use PyUnicode_AsUTF8() for null-terminated strings
+- Added Python 3.14 support to CI/CD pipelines (Linux, macOS, Windows)
+- Fixed Python 3.12+ integer conversion bug in integermodule.c:
+  - Updated macros to handle new PyLongObject internal structure (lv_tag)
+  - Fixed negative number handling in mpzToLongObj() using mpz_abs()
+- Fixed hanging tests on Python 3.12+:
+  - RSAGroup.paramgen() with safety limits on Blum-Williams prime generation
+  - chamhash_rsa_hw09 with deterministic coprime search
+  - Rabin signature test skipped on Python 3.12+ due to randomPrime() issues
+- Replaced deprecated OpenSSL functions:
+  - BN_generate_prime -> BN_generate_prime_ex
+- Added comprehensive integer arithmetic test suite
+- Added Docker-based testing environment for Python 3.12+ debugging
+- Updated cibuildwheel configuration to build wheels for Python 3.13 and 3.14
+
+v0.60 release (Python 3.8+ and OpenSSL 3.x compatibility)
+---------------------------------------------------------
+- Updated to require Python 3.8+ (dropped Python 2.x support)
+- Full OpenSSL 3.x compatibility across all C extension modules
+- Added PY_SSIZE_T_CLEAN macro to all C modules for Python 3.10+ compatibility
+- Fixed PyLongObject internal structure changes for Python 3.12+
+- Modernized CTR counter module (_counter.c) to use Python 3 Bytes API
+- Updated MIRACL pairing module to use EVP API instead of deprecated OpenSSL functions
+- Modern Python packaging with pyproject.toml (PEP 517/518)
+- Added GitHub Actions CI/CD workflow for automated testing
+- Added type stubs (.pyi files) for C extension modules
+- Upgraded to PBC library 1.0.0
+- Fixed segmentation faults in EC and pairing modules
+- Added new cryptographic scheme implementations and documentation
+- Removed deprecated platform.linux_distribution() usage
+- Removed obsolete distribute_setup.py
+- Updated configure.sh to detect Python 3.8-3.12
+- Various bug fixes and improvements
+
+v0.50 beta release (major release with many changes)
+-------------------------------------------
+- error handling updates to base modules
+- CL03: length of e is now verified, verifyCommit() and header added
+- SHA1(m_i) for doctest (verifyCommit) added
+- added implementation of private aggregate of time series data by Marc Joye et al.
+- added Abe's blind signature scheme [AO00, A01]
+- updated to install file for windows and nsis script.
+- fixed typo in protocol_a00.py and protocol_ao00.py
+- added hibenc_lew11.py
+- added Goldwasser-Micali pkenc scheme
+- added Leontiadis-Elkhyiaoui-Molva scheme
+- added four more ABE schemes
+- re-added Time-based proxy re-encryption scheme implementation for py3
+- added non-monotonic CP-ABE scheme by Yamada, Attrapadung, Hanaoka, Kunihiro
+- update libtomcrypt headers to v1.17
+- fix configure.sh: detect python better. thanks to Neal H. Walfield
+- fix decrypt error when plaintext=0 for Paillier scheme. Closes #97
+- added BBS98 proxy re-encryption scheme
+- added omplementation of AFGH06 scheme
+- interface for Proxy Re-Encryption schemes (charm.toolbox.PREnc)
+- adapted BBS98 to PREnc interface
+- added first NAL16 scheme
+- added NAL16b (CCA_21 version of NAL16a)
+- added scheme from Rouselakis and Waters (maabe_rw12.py)
+- added hash support to wrapped pbc ecc elements (pairingmodule.c)
+- added support for uncompressed curves elements (de)serialization.
+- improved arguments management in (de)serialize methods of the c pairingmodule.
+- improved error management in deserialize c pairingmodule
+- improved error management in pairing product routine of pairinggroup.c
+- improved error handling for initialize and initPP, new preproc attribute.
+- changed hash function from sha1 to sha256 everywhere appropriate
+- simplified encode/decode of messages in ECGroups. Squashed some bugs related to BN_bin2bn/BN_bn2bin
+- updated configure.sh to support ARM (android, raspberry pi, include armv7l support)
+- renamed sha1 to sha2 and update version to v0.5
+- added py2.7 compatibility for pairing group serialize/deserialize
+- added Dockerfile to document installation process
+- fixed compilation errors with OpenSSL 1.1.0 caused by API change
+- ciphertext-policy ABE schemes implemented under asymmetric pairing groups. Any policy represented as a monotone span program can be handled.
+- added support for Mac OS X 10.11+
+- added documentation
+- scheme contributions, bug fixes and/or various improvements from @adelapie, @leontiad, @nikosft, @0xwille, @artjomb, @cygnusv, @lferr, @denniss17, @locksmithone, @leafac, @ElectroSuccess, @sagrawal87. Thanks to all!
+
+v0.43 beta release (infrastructure changes)
+-------------------------------------------
+- simplified benchmarking interface -- breaks compatibility and see docs
+- added new schemes (some external contributions from Nikos Fotiou, Fan Zhang, Hoeteck Wee)
+- added pre-computation optimization for group exponentiation in pairing-based modules -- see docs
+- fixed several memory leaks and segmentation faults
+- switched from SHA1 to SHA2 for hashing operations
+- improved serialization -- now using JSON instead of Pickle (security vulnerability)
+- significant improvements to all base modules -- several fixes to integer and ecmodule functions
+- more robust Android build for Charm
+- significant fixes to 2.7 version of Charm
+
+v0.42 beta release (infrastructure changes)
+-------------------------------------------
+- Several bug fixes to base modules (mem leaks, interface issues): pairing (PBC & Miracl), ecc, and integer
+- Added new base module for RELIC and fixed bugs for MIRACL (Note: unified abstract interface for base modules coming in v0.43)
+- Refactored charm package structure. This affects schemes, toolbox, adapters, etc.
+- setup.py now creates Python egg
+- Integrated pytest to replace unit testing framework
+- Added doctests to all Charm schemes
+- Updated documentation
+
+v0.4 beta release
+-----------------
+- Several bug fixes to base modules: pairing (PBC & Miracl), ecc, and integer
+- Major changes to base module API. Recommend using the group abstraction wrappers: PairingGroup, ECGroup, and IntegerGroup
+- Removed pairing curve params in favor of a unified 'toolbox/pairingcurve.py' with curve identifiers (e.g., SS512, MNT224, etc)
+- Deleted the 'params' dir (See previous bullet)
+- Added high-level serialization API to simplify managing ciphertexts and keys in applications
+- Added PKCS #7 padding to toolbox
+- Added public key encryption schemes: 2 new IBE schemes (ibenc_ckrs09, ibenc_lsw08)
+- Added signature schemes: CL04 (anony. creds)
+- Added verifiable random function (VRF) scheme
+- Updates to KPABE scheme with new adapter
+- Improved protocol engine: automatically store data transmitted between parties and more flexibility in state transition map
+- Updated CNS07 scheme
+- Name updates to authenticated crypto abstraction
+- Updated documentation for generating group parameters and using our serialization interface

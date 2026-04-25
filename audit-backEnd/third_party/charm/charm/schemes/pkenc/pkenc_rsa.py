@@ -1,0 +1,186 @@
+'''
+**RSA Public Key Encryption Scheme (RSA)**
+
+*Authors:* R. Rivest, A. Shamir, L. Adleman
+
+| **Title:** "A Method for Obtaining Digital Signatures and Public-Key Cryptosystems"
+| **Published in:** Communications of the ACM, 1978
+| **Available from:**
+| **Notes:**
+
+.. rubric:: Scheme Properties
+
+* **Type:** encryption (public key)
+* **Setting:** Integer
+* **Assumption:** RSA (Integer Factorization)
+
+.. rubric:: Implementation
+
+:Authors: J. Ayo Akinyele, Gary Belvin
+:Date: 07/2011
+'''
+
+from charm.core.math.integer import integer,isPrime,gcd,random,randomPrime,toInt
+from charm.toolbox.PKEnc import PKEnc
+from charm.toolbox.PKSig import PKSig
+from charm.toolbox.paddingschemes import OAEPEncryptionPadding,PSSPadding
+from charm.toolbox.conversion import Conversion
+from math import ceil
+
+debug = False
+class RSA():
+    def __init__(self):
+        pass
+    # generate p,q and n
+    def paramgen(self, secparam):
+        while True:
+            p, q = randomPrime(secparam), randomPrime(secparam)
+            if isPrime(p) and isPrime(q) and p != q:
+                N = p * q
+                phi_N = (p - 1) * (q - 1)
+                break
+        return (p, q, N, phi_N)
+    
+    def keygen(self, secparam=1024, params=None):
+        if params:
+            (N, e, d, p, q) = self.convert(params)
+            phi_N = (p - 1) * (q - 1)
+            pk = { 'N':N, 'e':e }
+            sk = { 'phi_N':phi_N, 'd':d , 'N':N}
+            return (pk, sk)
+
+        (p, q, N, phi_N) = self.paramgen(secparam)
+
+        # Use deterministic algorithm to find coprime value instead of random search
+        # This fixes Python 3.12+ hanging issue where random values share common factors
+        # Try common RSA public exponents first, then search incrementally
+        common_exponents = [65537, 3, 5, 17, 257, 641, 6700417]
+        e_value = None
+
+        for candidate in common_exponents:
+            # Use isCoPrime() method which properly checks gcd == 1
+            if phi_N.isCoPrime(candidate):
+                e_value = candidate
+                break
+
+        # If common exponents don't work, search incrementally starting from a larger value
+        if e_value is None:
+            e_value = 65537
+            max_iterations = 10000000  # Large limit for deterministic search
+
+            for iterations in range(max_iterations):
+                # Use isCoPrime() method which properly checks gcd == 1
+                if phi_N.isCoPrime(e_value):
+                    break
+                e_value += 2  # Only try odd numbers (even numbers can't be coprime with even phi_N)
+
+            # Check if we found a coprime value (either broke out of loop or on last iteration)
+            if not phi_N.isCoPrime(e_value):
+                raise RuntimeError(
+                    f"Could not find coprime value after {max_iterations} iterations. "
+                    f"phi_N={phi_N}, last e_value={e_value}, gcd(e_value, phi_N)={gcd(e_value, phi_N)}"
+                )
+
+        # Create modular integer with phi_N as modulus - this is required for modular inverse
+        # Similar to how Rabin does: integer(i) % pk['N']
+        e = integer(e_value, phi_N)
+        d = e ** -1  # Compute modular inverse
+        pk = { 'N':N, 'e':e_value } # Use the plain integer value for public key
+        sk = { 'phi_N':phi_N, 'd':d , 'N':N}
+
+        return (pk, sk)
+    
+    def convert(self, N, e, d, p, q):
+        return (integer(N), integer(e), integer(d), 
+                integer(p), integer(q))
+    
+class RSA_Enc(RSA,PKEnc):
+    """
+    >>> rsa = RSA_Enc()
+    >>> (public_key, secret_key) = rsa.keygen(1024)
+    >>> msg = b'This is a test'
+    >>> cipher_text = rsa.encrypt(public_key, msg)
+    >>> decrypted_msg = rsa.decrypt(public_key, secret_key, cipher_text)
+    >>> decrypted_msg == msg
+    True
+    """
+    def __init__(self, padding=OAEPEncryptionPadding(), params=None):
+        RSA.__init__(self)
+        PKEnc.__init__(self)
+        self.paddingscheme = padding 
+    # m : Bytes
+    def encrypt(self, pk, m, salt=None):
+        octetlen = int(ceil(int(pk['N']).bit_length() / 8.0))
+        EM = self.paddingscheme.encode(m, octetlen, "", salt)
+        if debug: print("EM == >", EM)
+        i = Conversion.OS2IP(EM)
+        ip = integer(i) % pk['N']  #Convert to modular integer
+        return (ip ** pk['e']) % pk['N']
+    
+    def decrypt(self, pk, sk, c):
+        octetlen = int(ceil(int(pk['N']).bit_length() / 8.0))
+        M = (c ** (sk['d'] % sk['phi_N'])) % pk['N']
+        os = Conversion.IP2OS(int(M), octetlen)
+        if debug: print("OS  =>", os)
+        return self.paddingscheme.decode(os)
+    
+class RSA_Sig(RSA, PKSig):
+    """
+    >>> msg = b'This is a test message.'
+    >>> rsa = RSA_Sig()
+    >>> (public_key, secret_key) = rsa.keygen(1024)
+    >>> signature = rsa.sign(secret_key, msg)
+    >>> rsa.verify(public_key, msg, signature)
+    True
+    """
+    '''RSASSA-PSS'''
+    def __init__(self, padding=PSSPadding()):
+        RSA.__init__(self)
+        PKSig.__init__(self)
+        self.paddingscheme = padding 
+
+    def sign(self,sk, M, salt=None):
+        #apply encoding
+        modbits = int(sk['N']).bit_length()
+        k = int(ceil(modbits / 8.0))
+        emLen = int(ceil((modbits -1) / 8.0))
+        
+        
+        em = self.paddingscheme.encode(M, modbits - 1, salt)
+        m = Conversion.OS2IP(em)
+        m = integer(m) % sk['N']  #ERRROR m is larger than N
+        s =  (m ** sk['d']) % sk['N']
+        S = Conversion.IP2OS(s, k)
+        if debug:
+            print("Signing")
+            print("k     =>", k)
+            print("emLen =>", emLen) 
+            print("m     =>", m)
+            print("em    =>", em)
+            print("s     =>", s)
+            print("S     =>", S)
+        return S
+    
+    def verify(self, pk, M, S):
+        modbits = int(pk['N']).bit_length()
+        k = int(ceil(modbits / 8.0))
+        emLen = int(ceil((modbits -1) / 8.0))
+        if len(S) != k:
+            if debug: print("Sig is %s octets long, not %" %(len(S), k))
+            return False
+        s = Conversion.OS2IP(S)
+        s = integer(s) % pk['N']  #Convert to modular integer
+        m = (s ** pk['e']) % pk['N']
+        EM = Conversion.IP2OS(m, emLen)
+        if debug:
+            print("Verifying")
+            print("k     =>", k)
+            print("emLen =>", emLen)
+            print("s     =>", s)
+            print("m       =>", m)
+            print("em      =>", EM)
+            print("S     =>", S)
+        return self.paddingscheme.verify(M, EM, modbits-1)
+        
+    
+    
