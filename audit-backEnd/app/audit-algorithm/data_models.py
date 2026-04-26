@@ -18,6 +18,7 @@ from typing import Optional, List, Any
 
 
 
+
 @dataclass
 class MyFile:
     file_id: str                                  # 文件ID，例如哈希值
@@ -152,3 +153,62 @@ class KeywordTag:
         return len(self.file_ids)
     
 
+
+
+# =====================
+# 数据结构
+# =====================
+
+@dataclass
+class PlainFile:
+    """
+    明文文件对象
+    """
+    file_id: str
+    file_name: str
+    file_path: str
+    blocks: List[bytes]
+    keywords: List[str]
+    size: int
+    original_block_count: int
+
+
+@dataclass
+class EncryptedBlock:
+    """
+    加密后的文件块
+    cij 对应论文中的加密数据块
+    """
+    file_id: str
+    file_name: str
+    block_index: int          # j，从 1 开始
+    nonce: bytes
+    ciphertext: bytes
+    cij_int: int              # 后续 AuthGen 中可用于 u^cij
+
+
+@dataclass
+class EncryptedFile:
+    """
+    加密后的文件 Ci
+    """
+    file_id: str
+    file_name: str
+    blocks: List[EncryptedBlock]
+
+
+@dataclass
+class SetupResult:
+    """
+    Setup(F) 的输出结果
+    C: 加密文件块集合
+    W: 关键词集合
+    V: 索引向量集合
+    """
+    C: List[EncryptedFile]
+    W: List[str]
+    V: Dict[str, List[int]]
+    plain_files: List[PlainFile]
+    n: int
+    s: int
+    block_size: int
