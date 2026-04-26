@@ -1,6 +1,5 @@
 # input files
 
-
 # output: 
 # files = [
 #     {
@@ -14,19 +13,15 @@
 #         "keywords": ["search", "encryption"]
 #     }
 # ]
+
+
 from pathlib import Path
-from typing import Dict, List, Any, Union
+from typing import List, Dict, Union, Any
 import json
+import hashlib
 
-
-def split_bytes(data: bytes, block_size: int = 4096) -> List[bytes]:
-    """
-    将文件字节内容按固定大小切分为块
-    """
-    return [
-        data[i:i + block_size]
-        for i in range(0, len(data), block_size)
-    ]
+from ..audit_algorithm.data_models import PlainFile
+# from app.audit_algorithm.data_models import PlainFile
 
 
 def parse_keyword_input(keyword_input: Union[str, Dict[str, List[str]]]) -> Dict[str, List[str]]:
@@ -44,28 +39,36 @@ def parse_keyword_input(keyword_input: Union[str, Dict[str, List[str]]]) -> Dict
     """
 
     if isinstance(keyword_input, dict):
-        return keyword_input
+        return {
+            str(file_name): [
+                str(kw).strip().lower()
+                for kw in keywords
+                if str(kw).strip()
+            ]
+            for file_name, keywords in keyword_input.items()
+        }
 
-    keyword_input = keyword_input.strip()
+    if not isinstance(keyword_input, str):
+        raise TypeError("keyword_input 必须是 dict 或字符串")
 
-    # 尝试按 JSON 解析
+    text = keyword_input.strip()
+
     try:
-        data = json.loads(keyword_input)
+        data = json.loads(text)
         if isinstance(data, dict):
-            return data
+            return parse_keyword_input(data)
     except json.JSONDecodeError:
         pass
 
-    # 解析简化格式：[f1.txt:first,file; f2.txt:search,encryption]
-    if keyword_input.startswith("[") and keyword_input.endswith("]"):
-        keyword_input = keyword_input[1:-1]
+    if text.startswith("[") and text.endswith("]"):
+        text = text[1:-1]
 
     result: Dict[str, List[str]] = {}
 
-    if not keyword_input:
+    if not text:
         return result
 
-    items = keyword_input.split(";")
+    items = text.split(";")
 
     for item in items:
         item = item.strip()
@@ -77,24 +80,43 @@ def parse_keyword_input(keyword_input: Union[str, Dict[str, List[str]]]) -> Dict
 
         file_name, keywords = item.split(":", 1)
 
-        file_name = file_name.strip()
-        keyword_list = [
-            kw.strip()
+        result[file_name.strip()] = [
+            kw.strip().lower()
             for kw in keywords.split(",")
             if kw.strip()
         ]
 
-        result[file_name] = keyword_list
-
     return result
 
 
-def read_files_from_folder(
+def split_bytes(data: bytes, block_size: int) -> List[bytes]:
+    if block_size <= 0:
+        raise ValueError("block_size 必须大于 0")
+
+    if len(data) == 0:
+        return [b""]
+
+    return [
+        data[i:i + block_size]
+        for i in range(0, len(data), block_size)
+    ]
+
+
+def make_file_id(file_name: str, file_bytes: bytes) -> str:
+    h = hashlib.sha256()
+    h.update(file_name.encode("utf-8"))
+    h.update(b"::")
+    h.update(file_bytes)
+    return h.hexdigest()
+
+
+def read_files(
     folder_path: str,
     keyword_input: Union[str, Dict[str, List[str]]],
     block_size: int = 4096,
     recursive: bool = False
-) -> Dict[str, Any]:
+) -> List[PlainFile]:
+
     """
     读取文件夹中的文件，并统计文件个数、文件名、文件内容块、关键词。
 
@@ -116,33 +138,34 @@ def read_files_from_folder(
     keyword_map = parse_keyword_input(keyword_input)
 
     pattern = "**/*" if recursive else "*"
-    file_paths = [
+
+    file_paths = sorted([
         path for path in folder.glob(pattern)
         if path.is_file()
-    ]
+    ])
 
-    files = []
+    files: List[PlainFile] = []
 
     for path in file_paths:
         file_bytes = path.read_bytes()
         blocks = split_bytes(file_bytes, block_size)
 
-        file_info = {
-            "file_name": path.name,
-            "file_path": str(path),
-            "size": len(file_bytes),
-            "block_size": block_size,
-            "block_count": len(blocks),
-            "blocks": blocks,
-            "keywords": keyword_map.get(path.name, [])
-        }
+        keywords = keyword_map.get(path.name, [])
+        keywords = sorted(set(kw.strip().lower() for kw in keywords if kw.strip()))
 
-        files.append(file_info)
+        file = PlainFile(
+            file_id=make_file_id(path.name, file_bytes),
+            file_name=path.name,
+            file_path=str(path),
+            blocks=blocks,
+            keywords=keywords,
+            size=len(file_bytes),
+            block_count=len(blocks)
+        )
 
-    return {
-        "file_count": len(files),
-        "files": files
-    }
+        files.append(file)
+
+    return files
 
 
 if __name__ == "__main__":
@@ -155,18 +178,18 @@ if __name__ == "__main__":
         "f3.txt": ["third", "file"]
     }
 
-    result = read_files_from_folder(
+    result = read_files(
         folder_path=folder_path,
         keyword_input=keyword_input,
         block_size=1024
     )
 
-    print("文件数量：", result["file_count"])
+    print("文件数量：", len(result))
 
-    # for file in result["files"]:
-    #     print("文件名：", file["file_name"])
-    #     print("文件大小：", file["size"])
-    #     print("分块数量：", file["block_count"])
-    #     print("关键词：", file["keywords"])
-    #     print("第一个分块：", file["blocks"][0] if file["blocks"] else b"")
+    # for file in result:
+    #     print("文件名：", file.file_name)
+    #     print("文件大小：", file.size)
+    #     print("分块数量：", file.block_count)
+    #     print("关键词：", file.keywords)
+    #     print("第一个分块：", file.blocks[0] if file.blocks else b"")
     print(result)
