@@ -7,25 +7,6 @@ from pydantic import BaseModel
 # 全局参数容器
 PP = {}
 
-class MyFile(BaseModel):
-    def __init__(self, filename: str, content: bytes):
-        self.file_id = filename
-        self.content = content
-
-
-# files = [
-#     {
-#         "file_id": "F1",
-#         "content": b"...file bytes...",
-#         "keywords": ["cloud", "audit"]
-#     },
-#     {
-#         "file_id": "F2",
-#         "content": b"...",
-#         "keywords": ["search", "encryption"]
-#     }
-# ]
-
 
 
 # ================= Hash =================

@@ -45,11 +45,6 @@ def init():
     return PP
 
 
-def split_file(data: bytes, block_size=1024):
-    """把文件分割为固定大小块"""
-    return [data[i:i+block_size] for i in range(0, len(data), block_size)]
-
-    
 def setup(file_dict: dict):
     """
     file_dict 格式:
