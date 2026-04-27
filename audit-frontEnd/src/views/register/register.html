@@ -29,7 +29,7 @@
             </section>
 
             <section class="form-panel">
-                <form class="register-form">
+                <form class="register-form" id="registerForm">
                     <div class="form-head">
                         <p class="form-tag">New Account</p>
                         <h2>用户注册</h2>
@@ -49,6 +49,10 @@
                     <div class="input-group">
                         <label for="confirmPassword">确认密码</label>
                         <input type="password" id="confirmPassword" name="confirmPassword" placeholder="请再次输入密码" required>
+                    </div>
+
+                    <div class="error-msg">
+                        <span id="showMsg"></span>
                     </div>
 
                     <button class="register-btn" type="submit">立即注册</button>

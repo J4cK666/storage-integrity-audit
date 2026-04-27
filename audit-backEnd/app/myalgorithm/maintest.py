@@ -40,7 +40,8 @@ def main():
     block_size = 1024
 
     files = read_files(
-        folder_path = "/home/jgj/MyRepository/storage-integrity-audit/testfiles",
+        # folder_path = "/home/jgj/MyRepository/storage-integrity-audit/testfiles",
+        folder_path_test = "../../../testfiles",
         keyword_input=keyword_input,
         block_size=block_size
     )

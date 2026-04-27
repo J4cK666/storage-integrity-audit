@@ -287,6 +287,12 @@ a {
     filter: brightness(1.02);
 }
 
+.login-btn:disabled {
+    cursor: wait;
+    opacity: 0.72;
+    transform: none;
+}
+
 .register-btn {
     display: inline-flex;
     justify-content: center;

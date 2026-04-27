@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>审计工作台</title>
+    <link rel="icon" type="image/png" href="../../assets/logo/logo.png">
+    <link rel="stylesheet" href="./home.css">
+    <script src="./home.js" defer></script>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-head">
+                <img class="brand-logo" src="../../assets/logo/logo.png" alt="logo">
+                <div class="brand-text">
+                    <strong>存储完整性审计</strong>
+                    <span>Keyword Audit</span>
+                </div>
+            </div>
+
+            <nav class="side-nav" aria-label="主导航">
+                <button class="nav-item active" type="button" data-view="dashboard">
+                    <span class="nav-icon">⌂</span>
+                    <span class="nav-label">首页</span>
+                </button>
+                <button class="nav-item" type="button" data-view="upload">
+                    <span class="nav-icon">↑</span>
+                    <span class="nav-label">上传文件</span>
+                </button>
+                <button class="nav-item" type="button" data-view="audit">
+                    <span class="nav-icon">◎</span>
+                    <span class="nav-label">文件审计</span>
+                </button>
+                <button class="nav-item" type="button" data-view="records">
+                    <span class="nav-icon">≡</span>
+                    <span class="nav-label">审计记录</span>
+                </button>
+            </nav>
+
+            <div class="account-area">
+                <button class="account-button" id="accountButton" type="button">
+                    <span class="avatar">U</span>
+                    <span class="account-copy">
+                        <strong>审计用户</strong>
+                        <span>user@audit.local</span>
+                    </span>
+                </button>
+                <div class="account-menu" id="accountMenu">
+                    <button type="button" data-view="profile">用户信息</button>
+                    <a href="../login/login.html">退出登录</a>
+                </div>
+            </div>
+        </aside>
+
+        <main class="workspace">
+            <header class="topbar">
+                <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="隐藏或显示导航栏">☰</button>
+                <div>
+                    <p class="topbar-kicker">Secure Workspace</p>
+                    <h1 id="pageTitle">首页</h1>
+                </div>
+                <div class="topbar-status">
+                    <span></span>
+                    <strong>Proof Verify Ready</strong>
+                </div>
+            </header>
+
+            <section class="view active" id="dashboardView">
+                <div class="summary-grid">
+                    <article class="summary-card">
+                        <span>用户文件数</span>
+                        <strong id="fileCount">0</strong>
+                    </article>
+                    <article class="summary-card">
+                        <span>文件完整性比例</span>
+                        <strong id="integrityRatio">100%</strong>
+                    </article>
+                    <article class="summary-card">
+                        <span>关键词数量</span>
+                        <strong id="keywordCount">0</strong>
+                    </article>
+                    <article class="summary-card accent-card">
+                        <span>最近审计</span>
+                        <strong id="latestAudit">暂无记录</strong>
+                    </article>
+                </div>
+
+                <div class="content-grid">
+                    <section class="panel file-panel">
+                        <div class="panel-head">
+                            <div>
+                                <p class="panel-kicker">File Table</p>
+                                <h2>文件列表</h2>
+                            </div>
+                            <button class="soft-button" type="button" data-view="upload">新增文件</button>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>文件名</th>
+                                        <th>文件大小</th>
+                                        <th>上传时间</th>
+                                        <th>关键词</th>
+                                        <th>审计状态</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fileTableBody"></tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <aside class="panel process-panel">
+                        <div class="panel-head compact">
+                            <div>
+                                <p class="panel-kicker">Protocol</p>
+                                <h2>审计链路</h2>
+                            </div>
+                        </div>
+                        <div class="flow-list">
+                            <div class="flow-step done">
+                                <span>1</span>
+                                <strong>Setup / IndexGen</strong>
+                                <p>文件分块加密，生成关键词安全索引。</p>
+                            </div>
+                            <div class="flow-step done">
+                                <span>2</span>
+                                <strong>AuthGen</strong>
+                                <p>为加密数据块生成完整性验证器。</p>
+                            </div>
+                            <div class="flow-step">
+                                <span>3</span>
+                                <strong>Trapdoor / Challenge</strong>
+                                <p>按关键词生成搜索陷门与审计挑战。</p>
+                            </div>
+                            <div class="flow-step">
+                                <span>4</span>
+                                <strong>ProofGen / Verify</strong>
+                                <p>云端返回证明，TPA 执行验证。</p>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            </section>
+
+            <section class="view" id="uploadView">
+                <section class="panel upload-panel">
+                    <div class="panel-head">
+                        <div>
+                            <p class="panel-kicker">Upload</p>
+                            <h2>上传文件</h2>
+                        </div>
+                        <button class="primary-button" id="saveUploads" type="button">保存到文件列表</button>
+                    </div>
+
+                    <label class="upload-drop" for="fileInput">
+                        <input id="fileInput" type="file" multiple>
+                        <span>选择多个文件</span>
+                        <strong>为每个文件设置关键词后加入审计集合</strong>
+                    </label>
+
+                    <div class="pending-list" id="pendingList"></div>
+                </section>
+            </section>
+
+            <section class="view" id="auditView">
+                <section class="panel audit-panel">
+                    <div class="panel-head">
+                        <div>
+                            <p class="panel-kicker">Audit</p>
+                            <h2>文件审计</h2>
+                        </div>
+                    </div>
+
+                    <form class="audit-form" id="auditForm">
+                        <label for="auditKeyword">关键词</label>
+                        <div class="audit-input-row">
+                            <input id="auditKeyword" type="text" placeholder="例如：file、contract、report">
+                            <button class="primary-button" type="submit">开始审计</button>
+                        </div>
+                    </form>
+
+                    <div class="audit-result" id="auditResult">
+                        <div>
+                            <span>文件数</span>
+                            <strong>0</strong>
+                        </div>
+                        <div>
+                            <span>审计结果</span>
+                            <strong>等待关键词</strong>
+                        </div>
+                        <div>
+                            <span>审计时间</span>
+                            <strong>--</strong>
+                        </div>
+                    </div>
+
+                    <div class="table-wrap audit-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>文件名 / ID</th>
+                                    <th>关键词</th>
+                                    <th>审计结果</th>
+                                    <th>时间</th>
+                                </tr>
+                            </thead>
+                            <tbody id="auditResultBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </section>
+
+            <section class="view" id="recordsView">
+                <section class="panel">
+                    <div class="panel-head">
+                        <div>
+                            <p class="panel-kicker">History</p>
+                            <h2>审计记录</h2>
+                        </div>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>文件名 / ID</th>
+                                    <th>关键词</th>
+                                    <th>审计结果</th>
+                                    <th>审计时间</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recordTableBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </section>
+
+            <section class="view" id="profileView">
+                <section class="panel profile-panel">
+                    <div class="panel-head">
+                        <div>
+                            <p class="panel-kicker">Account</p>
+                            <h2>用户信息</h2>
+                        </div>
+                        <a class="danger-button" href="../login/login.html">退出登录</a>
+                    </div>
+                    <div class="profile-grid">
+                        <div>
+                            <span>用户名</span>
+                            <strong>审计用户</strong>
+                        </div>
+                        <div>
+                            <span>账号</span>
+                            <strong>user@audit.local</strong>
+                        </div>
+                        <div>
+                            <span>角色</span>
+                            <strong>User</strong>
+                        </div>
+                        <div>
+                            <span>审计权限</span>
+                            <strong>文件上传、关键词审计、记录查看</strong>
+                        </div>
+                    </div>
+                </section>
+            </section>
+        </main>
+    </div>
+</body>
+</html>

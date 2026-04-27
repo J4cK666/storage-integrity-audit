@@ -4,9 +4,16 @@ CREATE TABLE users (
   account_id TEXT NOT NULL PRIMARY KEY,
   username TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
+  cloud_folder TEXT DEFAULT '',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CHECK (length(account_id) = 10 AND account_id GLOB '[0-9]*')
+);
+
+-- account_id = YYYYMMDD + 01~99
+CREATE TABLE user_id_counters (
+  date_key TEXT PRIMARY KEY,
+  last_count INTEGER NOT NULL
 );
 
 CREATE TABLE user_crypto_keys (

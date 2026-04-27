@@ -256,6 +256,16 @@ a {
     color: #9bb1c7;
 }
 
+.error-msg {
+    min-height: 22px;
+    margin: 4px 0 10px;
+}
+
+.error-msg span {
+    color: #d63d3d;
+    font-size: 13px;
+}
+
 .register-btn {
     width: 100%;
     height: 56px;
@@ -275,6 +285,12 @@ a {
     transform: translateY(-2px);
     box-shadow: 0 22px 34px rgba(46, 143, 220, 0.28);
     filter: brightness(1.02);
+}
+
+.register-btn:disabled {
+    cursor: wait;
+    opacity: 0.72;
+    transform: none;
 }
 
 .login-link {
