@@ -12,11 +12,11 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 try:
-    from ..config.config import RUNTIME_DATA_DIR, UPLOAD_DIR
+    from ..config.config import CLOUD_ROOT, RUNTIME_DATA_DIR, UPLOAD_DIR
     from ..config.database import get_user_db_connection
     from .user_security import get_user_by_account_id, make_password_hash, verify_password
 except ImportError:
-    from config.config import RUNTIME_DATA_DIR, UPLOAD_DIR
+    from config.config import CLOUD_ROOT, RUNTIME_DATA_DIR, UPLOAD_DIR
     from config.database import get_user_db_connection
     from modules.user_security import get_user_by_account_id, make_password_hash, verify_password
 
@@ -113,6 +113,7 @@ def now_text() -> str:
 def connect() -> sqlite3.Connection:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    CLOUD_ROOT.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(DB_PATH)
     connection.row_factory = sqlite3.Row
     return connection
@@ -218,6 +219,30 @@ def make_file_id(file_name: str, content: bytes, user_id: str = "") -> str:
     return digest.hexdigest()
 
 
+def get_user_cloud_files_dir(user_id: str) -> Path:
+    user = get_user_by_account_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    cloud_folder = user["cloud_folder"]
+    if not cloud_folder:
+        raise HTTPException(status_code=400, detail="用户云端目录未初始化")
+
+    files_dir = CLOUD_ROOT / cloud_folder / "files"
+    files_dir.mkdir(parents=True, exist_ok=True)
+    return files_dir
+
+
+def cleanup_temp_file(path: Path) -> None:
+    if path.exists():
+        path.unlink()
+
+    try:
+        path.parent.rmdir()
+    except OSError:
+        pass
+
+
 def prepare_keyword_forms(files: List[UploadFile], keywords: List[str]) -> List[str]:
     if len(keywords) == len(files):
         return keywords
@@ -266,6 +291,7 @@ async def upload_files(
     user_id: str = Form(DEFAULT_USER_ID),
 ) -> UploadResponse:
     init_home_tables()
+    cloud_files_dir = get_user_cloud_files_dir(user_id)
 
     if not files:
         raise HTTPException(status_code=400, detail="请至少上传一个文件")
@@ -285,8 +311,11 @@ async def upload_files(
             file_suffix = Path(file_name).suffix
             user_upload_dir = UPLOAD_DIR / user_id
             user_upload_dir.mkdir(parents=True, exist_ok=True)
-            storage_path = user_upload_dir / f"{file_id}{file_suffix}"
-            storage_path.write_bytes(content)
+            temp_path = user_upload_dir / f"{file_id}{file_suffix}.tmp"
+            cloud_path = cloud_files_dir / f"{file_id}{file_suffix}"
+            temp_path.write_bytes(content)
+            temp_path.replace(cloud_path)
+            cleanup_temp_file(temp_path)
 
             upload_time = now_text()
             connection.execute(
@@ -307,7 +336,7 @@ async def upload_files(
                     file_id,
                     user_id,
                     file_name,
-                    str(storage_path),
+                    str(cloud_path),
                     len(content),
                     upload_time,
                     json.dumps(parsed_keywords, ensure_ascii=False),
