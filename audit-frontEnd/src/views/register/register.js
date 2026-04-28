@@ -6,10 +6,6 @@ function showMessage(message, isError = true) {
     showMsg.style.color = isError ? "#d63d3d" : "#1f9d66";
 }
 
-function saveCurrentUser(user) {
-    localStorage.setItem("auditUser", JSON.stringify(user));
-}
-
 function formatApiError(data, fallback) {
     if (typeof data.detail === "string") {
         return data.detail;
@@ -75,9 +71,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
         try {
             const user = await register(username, password);
-            saveCurrentUser(user);
-            showMessage(`注册成功，账号ID：${user.account_id}`, false);
-            window.location.href = "../home/home.html";
+            localStorage.removeItem("auditUser");
+            registerForm.reset();
+            showMessage(`注册成功，账号ID：${user.account_id}，请前往登录`, false);
+            alert(`注册成功！账号ID：${user.account_id}\n请前往登录页面登录。`);
+            window.location.href = "../login/login.html";
         } catch (error) {
             showMessage(error.message === "Failed to fetch" ? "无法连接后端服务，请先启动 FastAPI" : error.message);
         } finally {

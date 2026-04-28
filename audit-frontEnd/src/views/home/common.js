@@ -1,5 +1,6 @@
 const API_BASE_URL = "http://127.0.0.1:8000";
 const currentUser = readCurrentUser();
+let shellInteractionsBound = false;
 
 function readCurrentUser() {
     try {
@@ -16,7 +17,6 @@ function readCurrentUser() {
 
 function requireLogin() {
     if (!currentUser || !currentUser.account_id) {
-        window.location.href = "../login/login.html";
         return false;
     }
 
@@ -24,7 +24,7 @@ function requireLogin() {
 }
 
 function userId() {
-    return currentUser.account_id;
+    return currentUser?.account_id || "";
 }
 
 function formatApiError(data, fallback) {
@@ -108,8 +108,8 @@ function statusClass(status) {
 }
 
 function applyCurrentUser() {
-    const username = currentUser.username || "审计用户";
-    const accountId = currentUser.account_id || "--";
+    const username = currentUser?.username || "未登录";
+    const accountId = currentUser?.account_id || "请先登录";
 
     document.querySelectorAll(".account-copy strong").forEach((node) => {
         node.textContent = username;
@@ -122,16 +122,28 @@ function applyCurrentUser() {
     });
 }
 
-function setupShell(activePage) {
-    if (!requireLogin()) {
-        return false;
+function applyGuestAccountMenu(accountMenu) {
+    if (!accountMenu) {
+        return;
     }
 
-    applyCurrentUser();
+    accountMenu.innerHTML = '<a href="../login/login.html">去登录</a>';
+}
 
-    document.querySelectorAll("[data-page]").forEach((item) => {
-        item.classList.toggle("active", item.dataset.page === activePage);
-    });
+function updateSidebarToggle(sidebarToggle, appShell) {
+    if (!sidebarToggle || !appShell) {
+        return;
+    }
+
+    const isCollapsed = appShell.classList.contains("nav-collapsed");
+    sidebarToggle.setAttribute("aria-expanded", String(!isCollapsed));
+    sidebarToggle.setAttribute("title", isCollapsed ? "放大导航栏" : "缩小导航栏");
+}
+
+function bindShellInteractions() {
+    if (shellInteractionsBound) {
+        return;
+    }
 
     const appShell = document.querySelector(".app-shell");
     const sidebarToggle = document.getElementById("sidebarToggle");
@@ -139,14 +151,24 @@ function setupShell(activePage) {
     const accountMenu = document.getElementById("accountMenu");
     const savedNavState = localStorage.getItem("auditNavCollapsed");
 
-    if (savedNavState === "true") {
+    applyCurrentUser();
+
+    if (!requireLogin()) {
+        applyGuestAccountMenu(accountMenu);
+    }
+
+    if (appShell && savedNavState === "true") {
         appShell.classList.add("nav-collapsed");
     }
-    sidebarToggle?.setAttribute("aria-expanded", String(!appShell.classList.contains("nav-collapsed")));
-    sidebarToggle?.setAttribute("title", appShell.classList.contains("nav-collapsed") ? "放大导航栏" : "缩小导航栏");
+    document.documentElement.classList.remove("nav-collapsed-preload");
+    updateSidebarToggle(sidebarToggle, appShell);
 
     sidebarToggle?.addEventListener("click", (event) => {
         event.preventDefault();
+        if (!appShell) {
+            return;
+        }
+
         if (window.matchMedia("(max-width: 780px)").matches) {
             appShell.classList.toggle("mobile-nav-open");
             return;
@@ -154,13 +176,16 @@ function setupShell(activePage) {
 
         appShell.classList.toggle("nav-collapsed");
         localStorage.setItem("auditNavCollapsed", String(appShell.classList.contains("nav-collapsed")));
-        sidebarToggle.setAttribute("aria-expanded", String(!appShell.classList.contains("nav-collapsed")));
-        sidebarToggle.setAttribute("title", appShell.classList.contains("nav-collapsed") ? "放大导航栏" : "缩小导航栏");
+        updateSidebarToggle(sidebarToggle, appShell);
     });
 
     accountButton?.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
+        if (!accountMenu) {
+            return;
+        }
+
         accountMenu.classList.toggle("open");
     });
 
@@ -180,8 +205,20 @@ function setupShell(activePage) {
         });
     });
 
-    return true;
+    shellInteractionsBound = true;
 }
+
+function setupShell(activePage) {
+    bindShellInteractions();
+
+    document.querySelectorAll("[data-page]").forEach((item) => {
+        item.classList.toggle("active", item.dataset.page === activePage);
+    });
+
+    return requireLogin();
+}
+
+document.addEventListener("DOMContentLoaded", bindShellInteractions);
 
 window.AuditApp = {
     apiForm,

@@ -70,8 +70,15 @@ button {
     transition: grid-template-columns 0.24s ease;
 }
 
-.app-shell.nav-collapsed {
+.app-shell.nav-collapsed,
+.nav-collapsed-preload .app-shell {
     grid-template-columns: 88px minmax(0, 1fr);
+}
+
+.app-shell.nav-collapsed .sidebar,
+.nav-collapsed-preload .app-shell .sidebar {
+    align-items: center;
+    padding: 18px 12px;
 }
 
 .sidebar {
@@ -175,6 +182,7 @@ button {
 
 .account-area {
     position: relative;
+    z-index: 40;
     margin-top: auto;
 }
 
@@ -236,19 +244,58 @@ button {
 
 .app-shell.nav-collapsed .brand-text,
 .app-shell.nav-collapsed .nav-label,
-.app-shell.nav-collapsed .account-copy {
+.app-shell.nav-collapsed .account-copy,
+.nav-collapsed-preload .app-shell .brand-text,
+.nav-collapsed-preload .app-shell .nav-label,
+.nav-collapsed-preload .app-shell .account-copy {
     width: 0;
+    display: none;
     opacity: 0;
     pointer-events: none;
 }
 
 .app-shell.nav-collapsed .sidebar-head,
 .app-shell.nav-collapsed .nav-item,
-.app-shell.nav-collapsed .account-button {
+.app-shell.nav-collapsed .account-button,
+.nav-collapsed-preload .app-shell .sidebar-head,
+.nav-collapsed-preload .app-shell .nav-item,
+.nav-collapsed-preload .app-shell .account-button {
     justify-content: center;
 }
 
-.app-shell.nav-collapsed .account-menu {
+.app-shell.nav-collapsed .sidebar-head,
+.nav-collapsed-preload .app-shell .sidebar-head {
+    width: 64px;
+    padding: 8px;
+}
+
+.app-shell.nav-collapsed .side-nav,
+.app-shell.nav-collapsed .account-area,
+.nav-collapsed-preload .app-shell .side-nav,
+.nav-collapsed-preload .app-shell .account-area {
+    width: 64px;
+}
+
+.app-shell.nav-collapsed .nav-item,
+.app-shell.nav-collapsed .account-button,
+.nav-collapsed-preload .app-shell .nav-item,
+.nav-collapsed-preload .app-shell .account-button {
+    width: 56px;
+    min-height: 56px;
+    margin-inline: auto;
+    gap: 0;
+    padding: 0;
+    border-radius: 16px;
+}
+
+.app-shell.nav-collapsed .account-button,
+.nav-collapsed-preload .app-shell .account-button {
+    width: 64px;
+    min-height: 64px;
+}
+
+.app-shell.nav-collapsed .account-menu,
+.nav-collapsed-preload .app-shell .account-menu {
     left: 4px;
     right: auto;
     width: 180px;
@@ -268,6 +315,8 @@ button {
 }
 
 .sidebar-toggle {
+    position: relative;
+    z-index: 5;
     width: 46px;
     height: 46px;
     flex: 0 0 46px;
@@ -282,7 +331,8 @@ button {
     transition: transform 0.2s ease, background 0.2s ease;
 }
 
-.app-shell.nav-collapsed .sidebar-toggle {
+.app-shell.nav-collapsed .sidebar-toggle,
+.nav-collapsed-preload .app-shell .sidebar-toggle {
     transform: rotate(180deg);
 }
 
@@ -795,7 +845,8 @@ td {
 
 @media (max-width: 780px) {
     .app-shell,
-    .app-shell.nav-collapsed {
+    .app-shell.nav-collapsed,
+    .nav-collapsed-preload .app-shell {
         grid-template-columns: 1fr;
     }
 
