@@ -77,6 +77,7 @@ button {
 .sidebar {
     position: sticky;
     top: 0;
+    z-index: 10;
     height: 100vh;
     padding: 18px 14px;
     display: flex;
@@ -199,6 +200,7 @@ button {
 
 .account-menu {
     position: absolute;
+    z-index: 30;
     left: 0;
     right: 0;
     bottom: 76px;
@@ -237,6 +239,7 @@ button {
 .app-shell.nav-collapsed .account-copy {
     width: 0;
     opacity: 0;
+    pointer-events: none;
 }
 
 .app-shell.nav-collapsed .sidebar-head,
@@ -276,6 +279,11 @@ button {
     font-weight: 800;
     cursor: pointer;
     box-shadow: 0 10px 24px rgba(42, 92, 140, 0.08);
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.app-shell.nav-collapsed .sidebar-toggle {
+    transform: rotate(180deg);
 }
 
 .topbar-kicker,

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>审计工作台 - 文件审计</title>
+    <link rel="icon" type="image/png" href="../../assets/logo/logo.png">
+    <link rel="stylesheet" href="./home.css">
+    <script src="./common.js" defer></script>
+    <script src="./audit.js" defer></script>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-head">
+                <img class="brand-logo" src="../../assets/logo/logo.png" alt="logo">
+                <div class="brand-text"><strong>存储完整性审计</strong><span>Keyword Audit</span></div>
+            </div>
+            <nav class="side-nav" aria-label="主导航">
+                <a class="nav-item" href="./home.html" data-page="dashboard"><span class="nav-icon">⌂</span><span class="nav-label">首页</span></a>
+                <a class="nav-item" href="./upload.html" data-page="upload"><span class="nav-icon">↑</span><span class="nav-label">上传文件</span></a>
+                <a class="nav-item active" href="./audit.html" data-page="audit"><span class="nav-icon">◎</span><span class="nav-label">文件审计</span></a>
+                <a class="nav-item" href="./records.html" data-page="records"><span class="nav-icon">≡</span><span class="nav-label">审计记录</span></a>
+            </nav>
+            <div class="account-area">
+                <button class="account-button" id="accountButton" type="button">
+                    <span class="avatar">U</span>
+                    <span class="account-copy"><strong>审计用户</strong><span>user@audit.local</span></span>
+                </button>
+                <div class="account-menu" id="accountMenu">
+                    <a href="./profile.html">用户信息</a>
+                    <a href="../login/login.html" data-logout>退出登录</a>
+                </div>
+            </div>
+        </aside>
+
+        <main class="workspace">
+            <header class="topbar">
+                <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="隐藏或显示导航栏">☰</button>
+                <div>
+                    <p class="topbar-kicker">Secure Workspace</p>
+                    <h1 id="pageTitle">文件审计</h1>
+                </div>
+                <div class="topbar-status"><span></span><strong>Proof Verify Ready</strong></div>
+            </header>
+
+            <section class="view active">
+                <section class="panel audit-panel">
+                    <div class="panel-head">
+                        <div>
+                            <p class="panel-kicker">Audit</p>
+                            <h2>文件审计</h2>
+                        </div>
+                    </div>
+                    <div class="audit-form" id="auditForm">
+                        <label for="auditKeyword">关键词</label>
+                        <div class="audit-input-row">
+                            <input id="auditKeyword" type="text" placeholder="例如：file、contract、report">
+                            <button class="primary-button" id="runAuditButton" type="button">开始审计</button>
+                        </div>
+                    </div>
+                    <div class="audit-result" id="auditResult">
+                        <div><span>文件数</span><strong>0</strong></div>
+                        <div><span>审计结果</span><strong>等待关键词</strong></div>
+                        <div><span>审计时间</span><strong>--</strong></div>
+                    </div>
+                    <div class="table-wrap audit-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>文件名 / ID</th>
+                                    <th>关键词</th>
+                                    <th>审计结果</th>
+                                    <th>时间</th>
+                                </tr>
+                            </thead>
+                            <tbody id="auditResultBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </section>
+        </main>
+    </div>
+</body>
+</html>

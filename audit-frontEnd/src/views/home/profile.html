@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>审计工作台 - 用户信息</title>
+    <link rel="icon" type="image/png" href="../../assets/logo/logo.png">
+    <link rel="stylesheet" href="./home.css">
+    <script src="./common.js" defer></script>
+    <script src="./profile.js" defer></script>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-head">
+                <img class="brand-logo" src="../../assets/logo/logo.png" alt="logo">
+                <div class="brand-text"><strong>存储完整性审计</strong><span>Keyword Audit</span></div>
+            </div>
+            <nav class="side-nav" aria-label="主导航">
+                <a class="nav-item" href="./home.html" data-page="dashboard"><span class="nav-icon">⌂</span><span class="nav-label">首页</span></a>
+                <a class="nav-item" href="./upload.html" data-page="upload"><span class="nav-icon">↑</span><span class="nav-label">上传文件</span></a>
+                <a class="nav-item" href="./audit.html" data-page="audit"><span class="nav-icon">◎</span><span class="nav-label">文件审计</span></a>
+                <a class="nav-item" href="./records.html" data-page="records"><span class="nav-icon">≡</span><span class="nav-label">审计记录</span></a>
+            </nav>
+            <div class="account-area">
+                <button class="account-button" id="accountButton" type="button">
+                    <span class="avatar">U</span>
+                    <span class="account-copy"><strong>审计用户</strong><span>user@audit.local</span></span>
+                </button>
+                <div class="account-menu" id="accountMenu">
+                    <a href="./profile.html">用户信息</a>
+                    <a href="../login/login.html" data-logout>退出登录</a>
+                </div>
+            </div>
+        </aside>
+
+        <main class="workspace">
+            <header class="topbar">
+                <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="隐藏或显示导航栏">☰</button>
+                <div>
+                    <p class="topbar-kicker">Secure Workspace</p>
+                    <h1 id="pageTitle">用户信息</h1>
+                </div>
+                <div class="topbar-status"><span></span><strong>Proof Verify Ready</strong></div>
+            </header>
+
+            <section class="view active">
+                <section class="panel profile-panel">
+                    <div class="panel-head">
+                        <div>
+                            <p class="panel-kicker">Account</p>
+                            <h2>用户信息</h2>
+                        </div>
+                        <a class="danger-button" href="../login/login.html" data-logout>退出登录</a>
+                    </div>
+                    <div class="profile-grid">
+                        <div><span>用户名</span><strong id="profileUsername">审计用户</strong></div>
+                        <div><span>用户 ID</span><strong id="profileAccountId">--</strong></div>
+                        <div><span>角色</span><strong id="profileRole">User</strong></div>
+                        <div><span>审计权限</span><strong id="profilePermissions">文件上传、关键词审计、记录查看</strong></div>
+                    </div>
+
+                    <div class="security-panel">
+                        <div class="security-head">
+                            <div>
+                                <p class="panel-kicker">Key Access</p>
+                                <h3>用户密钥</h3>
+                            </div>
+                            <button class="soft-button" id="requestKeys" type="button">申请查看</button>
+                        </div>
+                        <div class="key-grid">
+                            <label>
+                                <span>公钥</span>
+                                <div class="secret-input">
+                                    <input id="publicKeyField" type="password" value="••••••••••••••••" readonly>
+                                    <button type="button" data-toggle-secret="publicKeyField">👁</button>
+                                </div>
+                            </label>
+                            <label>
+                                <span>私钥</span>
+                                <div class="secret-input">
+                                    <input id="privateKeyField" type="password" value="••••••••••••••••" readonly>
+                                    <button type="button" data-toggle-secret="privateKeyField">👁</button>
+                                </div>
+                            </label>
+                        </div>
+                        <p class="form-message" id="keyMessage"></p>
+                    </div>
+
+                    <form class="password-form" id="passwordForm">
+                        <div class="security-head">
+                            <div>
+                                <p class="panel-kicker">Password</p>
+                                <h3>修改密码</h3>
+                            </div>
+                        </div>
+                        <div class="password-grid">
+                            <label><span>原密码</span><input id="oldPassword" type="password" placeholder="请输入原密码"></label>
+                            <label><span>新密码</span><input id="newPassword" type="password" placeholder="请输入新密码"></label>
+                            <label><span>确认新密码</span><input id="confirmNewPassword" type="password" placeholder="请再次输入新密码"></label>
+                        </div>
+                        <button class="primary-button" type="submit">保存新密码</button>
+                        <p class="form-message" id="passwordMessage"></p>
+                    </form>
+                </section>
+            </section>
+        </main>
+    </div>
+</body>
+</html>
