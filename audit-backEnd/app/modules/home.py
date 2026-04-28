@@ -11,10 +11,17 @@ from uuid import uuid4
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
+try:
+    from ..config.config import RUNTIME_DATA_DIR, UPLOAD_DIR
+    from ..config.database import get_user_db_connection
+    from .user_security import get_user_by_account_id, make_password_hash, verify_password
+except ImportError:
+    from config.config import RUNTIME_DATA_DIR, UPLOAD_DIR
+    from config.database import get_user_db_connection
+    from modules.user_security import get_user_by_account_id, make_password_hash, verify_password
 
-BASE_DIR = Path(__file__).resolve().parents[2]
-DATA_DIR = BASE_DIR / "runtime_data"
-UPLOAD_DIR = DATA_DIR / "uploads"
+
+DATA_DIR = RUNTIME_DATA_DIR
 DB_PATH = DATA_DIR / "home.db"
 
 DEFAULT_USER_ID = "default-user"
@@ -78,13 +85,25 @@ class AuditRecord(BaseModel):
 class UserProfile(BaseModel):
     user_id: str
     username: str
-    account: str
+    account_id: str
+    cloud_folder: str
     role: str
     permissions: List[str]
 
 
 class ApiMessage(BaseModel):
     message: str
+
+
+class UserKeyResponse(BaseModel):
+    public_key: str
+    private_key: str
+
+
+class ChangePasswordRequest(BaseModel):
+    user_id: str = Field(..., min_length=1)
+    old_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=1, max_length=128)
 
 
 def now_text() -> str:
@@ -189,8 +208,10 @@ def calculate_integrity_ratio(files: List[FileItem]) -> float:
     return round(complete_or_pending / len(files) * 100, 2)
 
 
-def make_file_id(file_name: str, content: bytes) -> str:
+def make_file_id(file_name: str, content: bytes, user_id: str = "") -> str:
     digest = hashlib.sha256()
+    digest.update(user_id.encode("utf-8"))
+    digest.update(b"::")
     digest.update(file_name.encode("utf-8"))
     digest.update(b"::")
     digest.update(content)
@@ -260,9 +281,11 @@ async def upload_files(
                 raise HTTPException(status_code=400, detail=f"{file_name} 缺少关键词")
 
             content = await upload_file.read()
-            file_id = make_file_id(file_name, content)
+            file_id = make_file_id(file_name, content, user_id)
             file_suffix = Path(file_name).suffix
-            storage_path = UPLOAD_DIR / f"{file_id}{file_suffix}"
+            user_upload_dir = UPLOAD_DIR / user_id
+            user_upload_dir.mkdir(parents=True, exist_ok=True)
+            storage_path = user_upload_dir / f"{file_id}{file_suffix}"
             storage_path.write_bytes(content)
 
             upload_time = now_text()
@@ -397,13 +420,65 @@ def get_audit_records(user_id: str = DEFAULT_USER_ID) -> List[AuditRecord]:
 
 @home_router.get("/profile", response_model=UserProfile)
 def get_profile(user_id: str = DEFAULT_USER_ID) -> UserProfile:
+    user = get_user_by_account_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
     return UserProfile(
         user_id=user_id,
-        username="审计用户",
-        account="user@audit.local",
+        username=user["username"],
+        account_id=user["account_id"],
+        cloud_folder=user["cloud_folder"],
         role="User",
         permissions=["文件上传", "关键词审计", "审计记录查看"],
     )
+
+
+@home_router.get("/profile/keys", response_model=UserKeyResponse)
+def get_profile_keys(user_id: str = DEFAULT_USER_ID) -> UserKeyResponse:
+    user = get_user_by_account_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    with get_user_db_connection() as connection:
+        row = connection.execute(
+            """
+            SELECT public_key, private_key
+            FROM user_crypto_keys
+            WHERE account_id = ?
+            """,
+            (user_id,),
+        ).fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="用户密钥不存在")
+
+    return UserKeyResponse(
+        public_key=row["public_key"],
+        private_key=row["private_key"],
+    )
+
+
+@home_router.post("/profile/password", response_model=ApiMessage)
+def change_password(request: ChangePasswordRequest) -> ApiMessage:
+    user = get_user_by_account_id(request.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    if not verify_password(request.old_password, user["password_hash"]):
+        raise HTTPException(status_code=400, detail="原密码错误")
+
+    with get_user_db_connection() as connection:
+        connection.execute(
+            """
+            UPDATE users
+            SET password_hash = ?
+            WHERE account_id = ?
+            """,
+            (make_password_hash(request.new_password), request.user_id),
+        )
+
+    return ApiMessage(message="密码修改成功")
 
 
 @home_router.post("/logout", response_model=ApiMessage)

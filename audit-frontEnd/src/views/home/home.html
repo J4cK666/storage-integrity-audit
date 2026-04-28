@@ -248,21 +248,73 @@
                     <div class="profile-grid">
                         <div>
                             <span>用户名</span>
-                            <strong>审计用户</strong>
+                            <strong id="profileUsername">审计用户</strong>
                         </div>
                         <div>
-                            <span>账号</span>
-                            <strong>user@audit.local</strong>
+                            <span>用户 ID</span>
+                            <strong id="profileAccountId">--</strong>
                         </div>
                         <div>
                             <span>角色</span>
-                            <strong>User</strong>
+                            <strong id="profileRole">User</strong>
                         </div>
                         <div>
                             <span>审计权限</span>
-                            <strong>文件上传、关键词审计、记录查看</strong>
+                            <strong id="profilePermissions">文件上传、关键词审计、记录查看</strong>
                         </div>
                     </div>
+
+                    <div class="security-panel">
+                        <div class="security-head">
+                            <div>
+                                <p class="panel-kicker">Key Access</p>
+                                <h3>用户密钥</h3>
+                            </div>
+                            <button class="soft-button" id="requestKeys" type="button">申请查看</button>
+                        </div>
+                        <div class="key-grid">
+                            <label>
+                                <span>公钥</span>
+                                <div class="secret-input">
+                                    <input id="publicKeyField" type="password" value="••••••••••••••••" readonly>
+                                    <button type="button" data-toggle-secret="publicKeyField">👁</button>
+                                </div>
+                            </label>
+                            <label>
+                                <span>私钥</span>
+                                <div class="secret-input">
+                                    <input id="privateKeyField" type="password" value="••••••••••••••••" readonly>
+                                    <button type="button" data-toggle-secret="privateKeyField">👁</button>
+                                </div>
+                            </label>
+                        </div>
+                        <p class="form-message" id="keyMessage"></p>
+                    </div>
+
+                    <form class="password-form" id="passwordForm">
+                        <div class="security-head">
+                            <div>
+                                <p class="panel-kicker">Password</p>
+                                <h3>修改密码</h3>
+                            </div>
+                        </div>
+                        <div class="password-grid">
+                            <label>
+                                <span>原密码</span>
+                                <input id="oldPassword" type="password" placeholder="请输入原密码">
+                            </label>
+                            <label>
+                                <span>新密码</span>
+                                <input id="newPassword" type="password" placeholder="请输入新密码">
+                            </label>
+                            <label>
+                                <span>确认新密码</span>
+                                <input id="confirmNewPassword" type="password" placeholder="请再次输入新密码">
+                            </label>
+                        </div>
+                        <button class="primary-button" type="submit">保存新密码</button>
+                        <p class="form-message" id="passwordMessage"></p>
+                    </form>
                 </section>
             </section>
         </main>
