@@ -45,7 +45,6 @@ function openSuccessModal(user) {
     successMessage.textContent = `注册成功，账号ID：${accountId}。请前往登录页面登录。`;
     successModal.classList.add("open");
     successModal.setAttribute("aria-hidden", "false");
-    successLoginButton.focus();
 }
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -54,7 +53,8 @@ document.addEventListener("DOMContentLoaded", function() {
     const loginLink = document.getElementById("login-link");
     const successLoginButton = document.getElementById("successLoginButton");
 
-    successLoginButton.addEventListener("click", function() {
+    successLoginButton.addEventListener("click", function(event) {
+        event.preventDefault();
         window.location.href = "../login/login.html";
     });
 
