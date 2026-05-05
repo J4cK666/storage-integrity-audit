@@ -36,10 +36,27 @@ async function register(username, password) {
     return data.user;
 }
 
+function openSuccessModal(user) {
+    const successModal = document.getElementById("successModal");
+    const successMessage = document.getElementById("successMessage");
+    const successLoginButton = document.getElementById("successLoginButton");
+    const accountId = user?.account_id || "--";
+
+    successMessage.textContent = `注册成功，账号ID：${accountId}。请前往登录页面登录。`;
+    successModal.classList.add("open");
+    successModal.setAttribute("aria-hidden", "false");
+    successLoginButton.focus();
+}
+
 document.addEventListener("DOMContentLoaded", function() {
     const registerForm = document.getElementById("registerForm");
     const registerButton = registerForm.querySelector(".register-btn");
     const loginLink = document.getElementById("login-link");
+    const successLoginButton = document.getElementById("successLoginButton");
+
+    successLoginButton.addEventListener("click", function() {
+        window.location.href = "../login/login.html";
+    });
 
     if (loginLink) {
         loginLink.addEventListener("click", function(event) {
@@ -74,8 +91,7 @@ document.addEventListener("DOMContentLoaded", function() {
             localStorage.removeItem("auditUser");
             registerForm.reset();
             showMessage(`注册成功，账号ID：${user.account_id}，请前往登录`, false);
-            alert(`注册成功！账号ID：${user.account_id}\n请前往登录页面登录。`);
-            window.location.href = "../login/login.html";
+            openSuccessModal(user);
         } catch (error) {
             showMessage(error.message === "Failed to fetch" ? "无法连接后端服务，请先启动 FastAPI" : error.message);
         } finally {
