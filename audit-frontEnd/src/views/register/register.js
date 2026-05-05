@@ -52,6 +52,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const registerButton = registerForm.querySelector(".register-btn");
     const loginLink = document.getElementById("login-link");
     const successLoginButton = document.getElementById("successLoginButton");
+    let isSubmitting = false;
 
     successLoginButton.addEventListener("click", function(event) {
         event.preventDefault();
@@ -65,8 +66,13 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    registerForm.addEventListener("submit", async function(event) {
-        event.preventDefault();
+    async function handleRegister(event) {
+        event?.preventDefault();
+        event?.stopPropagation();
+
+        if (isSubmitting) {
+            return;
+        }
 
         const username = document.getElementById("username").value.trim();
         const password = document.getElementById("password").value;
@@ -82,6 +88,7 @@ document.addEventListener("DOMContentLoaded", function() {
             return;
         }
 
+        isSubmitting = true;
         registerButton.disabled = true;
         registerButton.textContent = "注册中...";
         showMessage("");
@@ -95,8 +102,12 @@ document.addEventListener("DOMContentLoaded", function() {
         } catch (error) {
             showMessage(error.message === "Failed to fetch" ? "无法连接后端服务，请先启动 FastAPI" : error.message);
         } finally {
+            isSubmitting = false;
             registerButton.disabled = false;
             registerButton.textContent = "立即注册";
         }
-    });
+    }
+
+    registerButton.addEventListener("click", handleRegister);
+    registerForm.addEventListener("submit", handleRegister);
 });
