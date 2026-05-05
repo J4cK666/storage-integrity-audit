@@ -4,10 +4,15 @@ let shellInteractionsBound = false;
 
 function readCurrentUser() {
     try {
-        const user = JSON.parse(localStorage.getItem("auditUser") || "null");
-        if (user && !user.account_id && user.user_id) {
-            user.account_id = user.user_id;
+        const storedUser = JSON.parse(localStorage.getItem("auditUser") || "null");
+        const user = storedUser?.user || storedUser;
+
+        if (user) {
+            user.account_id = user.account_id || user.user_id || user.id || "";
+            user.username = user.username || user.name || "";
+            localStorage.setItem("auditUser", JSON.stringify(user));
         }
+
         return user;
     } catch (error) {
         localStorage.removeItem("auditUser");
@@ -223,6 +228,7 @@ document.addEventListener("DOMContentLoaded", bindShellInteractions);
 window.AuditApp = {
     apiForm,
     apiJson,
+    currentUser,
     escapeHtml,
     formatSize,
     makeKeywordPills,

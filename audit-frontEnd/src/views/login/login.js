@@ -7,7 +7,12 @@ function showMessage(message, isError = true) {
 }
 
 function saveCurrentUser(user) {
-    localStorage.setItem("auditUser", JSON.stringify(user));
+    const normalizedUser = {
+        ...user,
+        account_id: user?.account_id || user?.user_id || user?.id || "",
+        username: user?.username || user?.name || ""
+    };
+    localStorage.setItem("auditUser", JSON.stringify(normalizedUser));
 }
 
 function formatApiError(data, fallback) {

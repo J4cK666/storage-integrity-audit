@@ -1,5 +1,6 @@
 const {
     apiJson,
+    currentUser,
     setupShell,
     userId
 } = window.AuditApp;
@@ -13,12 +14,38 @@ function setMessage(id, message, isError = false) {
     node.style.color = isError ? "#d64a4a" : "#1f9d66";
 }
 
+function renderProfile(profile) {
+    document.getElementById("profileUsername").textContent = profile.username || "未登录";
+    document.getElementById("profileAccountId").textContent = profile.account_id || profile.user_id || "--";
+    document.getElementById("profileRole").textContent = profile.role || "User";
+    document.getElementById("profilePermissions").textContent = Array.isArray(profile.permissions)
+        ? profile.permissions.join("、")
+        : "文件上传、关键词审计、记录查看";
+}
+
+function renderProfileFromLoginState() {
+    if (!currentUser || !currentUser.account_id) {
+        renderProfile({
+            username: "未登录",
+            account_id: "--",
+            role: "Guest",
+            permissions: ["请先登录"]
+        });
+        return false;
+    }
+
+    renderProfile({
+        username: currentUser.username,
+        account_id: currentUser.account_id,
+        role: "User",
+        permissions: ["文件上传", "关键词审计", "审计记录查看"]
+    });
+    return true;
+}
+
 async function loadProfile() {
     const profile = await apiJson(`/home/profile?user_id=${encodeURIComponent(userId())}`);
-    document.getElementById("profileUsername").textContent = profile.username;
-    document.getElementById("profileAccountId").textContent = profile.account_id;
-    document.getElementById("profileRole").textContent = profile.role;
-    document.getElementById("profilePermissions").textContent = profile.permissions.join("、");
+    renderProfile(profile);
 }
 
 async function requestUserKeys() {
@@ -82,7 +109,10 @@ async function changePassword(event) {
 }
 
 async function boot() {
-    if (!setupShell("profile")) {
+    const hasLoginUser = renderProfileFromLoginState();
+
+    if (!setupShell("profile") || !hasLoginUser) {
+        setMessage("passwordMessage", "请先登录后查看用户信息", true);
         return;
     }
 
