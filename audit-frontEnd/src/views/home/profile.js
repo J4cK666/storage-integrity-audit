@@ -1,134 +1,199 @@
-const {
-    apiJson,
-    currentUser,
-    setupShell,
-    userId
-} = window.AuditApp;
+(function() {
+    function getStoredUser() {
+        try {
+            const storedUser = JSON.parse(localStorage.getItem("auditUser") || "null");
+            const user = storedUser?.user || storedUser;
 
-const requestKeys = document.getElementById("requestKeys");
-const passwordForm = document.getElementById("passwordForm");
+            if (!user) {
+                return null;
+            }
 
-function setMessage(id, message, isError = false) {
-    const node = document.getElementById(id);
-    node.textContent = message;
-    node.style.color = isError ? "#d64a4a" : "#1f9d66";
-}
+            return {
+                ...user,
+                account_id: user.account_id || user.user_id || user.id || "",
+                username: user.username || user.name || ""
+            };
+        } catch (error) {
+            localStorage.removeItem("auditUser");
+            return null;
+        }
+    }
 
-function renderProfile(profile) {
-    document.getElementById("profileUsername").textContent = profile.username || "未登录";
-    document.getElementById("profileAccountId").textContent = profile.account_id || profile.user_id || "--";
-    document.getElementById("profileRole").textContent = profile.role || "User";
-    document.getElementById("profilePermissions").textContent = Array.isArray(profile.permissions)
-        ? profile.permissions.join("、")
-        : "文件上传、关键词审计、记录查看";
-}
+    function setText(id, value) {
+        const node = document.getElementById(id);
+        if (node) {
+            node.textContent = value;
+        }
+    }
 
-function renderProfileFromLoginState() {
-    if (!currentUser || !currentUser.account_id) {
+    function setMessage(id, message, isError = false) {
+        const node = document.getElementById(id);
+        if (!node) {
+            return;
+        }
+
+        node.textContent = message;
+        node.style.color = isError ? "#d64a4a" : "#1f9d66";
+    }
+
+    function renderProfile(profile) {
+        setText("profileUsername", profile.username || "未登录");
+        setText("profileAccountId", profile.account_id || profile.user_id || "--");
+        setText("profileRole", profile.role || "User");
+        setText(
+            "profilePermissions",
+            Array.isArray(profile.permissions)
+                ? profile.permissions.join("、")
+                : "文件上传、关键词审计、记录查看"
+        );
+    }
+
+    function renderProfileFromLoginState() {
+        const currentUser = getStoredUser();
+
+        if (!currentUser || !currentUser.account_id) {
+            renderProfile({
+                username: "未登录",
+                account_id: "--",
+                role: "Guest",
+                permissions: ["请先登录"]
+            });
+            return null;
+        }
+
         renderProfile({
-            username: "未登录",
-            account_id: "--",
-            role: "Guest",
-            permissions: ["请先登录"]
+            username: currentUser.username,
+            account_id: currentUser.account_id,
+            role: "User",
+            permissions: ["文件上传", "关键词审计", "审计记录查看"]
         });
-        return false;
+        return currentUser;
     }
 
-    renderProfile({
-        username: currentUser.username,
-        account_id: currentUser.account_id,
-        role: "User",
-        permissions: ["文件上传", "关键词审计", "审计记录查看"]
-    });
-    return true;
-}
-
-async function loadProfile() {
-    const profile = await apiJson(`/home/profile?user_id=${encodeURIComponent(userId())}`);
-    renderProfile(profile);
-}
-
-async function requestUserKeys() {
-    requestKeys.disabled = true;
-    requestKeys.textContent = "申请中...";
-    setMessage("keyMessage", "");
-
-    try {
-        const keys = await apiJson(`/home/profile/keys?user_id=${encodeURIComponent(userId())}`);
-        document.getElementById("publicKeyField").value = keys.public_key;
-        document.getElementById("privateKeyField").value = keys.private_key;
-        document.getElementById("publicKeyField").type = "password";
-        document.getElementById("privateKeyField").type = "password";
-        setMessage("keyMessage", "密钥已获取，默认以黑点隐藏");
-    } catch (error) {
-        setMessage("keyMessage", error.message, true);
-    } finally {
-        requestKeys.disabled = false;
-        requestKeys.textContent = "重新申请";
-    }
-}
-
-async function changePassword(event) {
-    event.preventDefault();
-
-    const oldPassword = document.getElementById("oldPassword").value;
-    const newPassword = document.getElementById("newPassword").value;
-    const confirmNewPassword = document.getElementById("confirmNewPassword").value;
-
-    if (!oldPassword || !newPassword || !confirmNewPassword) {
-        setMessage("passwordMessage", "请完整填写密码信息", true);
-        return;
+    function getAuditApp() {
+        return window.AuditApp || {};
     }
 
-    if (newPassword !== confirmNewPassword) {
-        setMessage("passwordMessage", "两次输入的新密码不一致", true);
-        return;
+    async function loadProfile(user) {
+        const { apiJson } = getAuditApp();
+        if (!apiJson || !user?.account_id) {
+            return;
+        }
+
+        const profile = await apiJson(`/home/profile?user_id=${encodeURIComponent(user.account_id)}`);
+        renderProfile(profile);
     }
 
-    const button = passwordForm.querySelector("button");
-    button.disabled = true;
-    button.textContent = "保存中...";
+    async function requestUserKeys(event) {
+        event.preventDefault();
 
-    try {
-        const result = await apiJson("/home/profile/password", {
-            method: "POST",
-            body: JSON.stringify({
-                user_id: userId(),
-                old_password: oldPassword,
-                new_password: newPassword
-            })
+        const user = getStoredUser();
+        const { apiJson } = getAuditApp();
+        const requestKeys = document.getElementById("requestKeys");
+
+        if (!apiJson || !user?.account_id) {
+            setMessage("keyMessage", "请先登录后查看密钥", true);
+            return;
+        }
+
+        requestKeys.disabled = true;
+        requestKeys.textContent = "申请中...";
+        setMessage("keyMessage", "");
+
+        try {
+            const keys = await apiJson(`/home/profile/keys?user_id=${encodeURIComponent(user.account_id)}`);
+            document.getElementById("publicKeyField").value = keys.public_key;
+            document.getElementById("privateKeyField").value = keys.private_key;
+            document.getElementById("publicKeyField").type = "password";
+            document.getElementById("privateKeyField").type = "password";
+            setMessage("keyMessage", "密钥已获取，默认以黑点隐藏");
+        } catch (error) {
+            setMessage("keyMessage", error.message, true);
+        } finally {
+            requestKeys.disabled = false;
+            requestKeys.textContent = "重新申请";
+        }
+    }
+
+    async function changePassword(event) {
+        event.preventDefault();
+
+        const user = getStoredUser();
+        const { apiJson } = getAuditApp();
+        const passwordForm = document.getElementById("passwordForm");
+        const oldPassword = document.getElementById("oldPassword").value;
+        const newPassword = document.getElementById("newPassword").value;
+        const confirmNewPassword = document.getElementById("confirmNewPassword").value;
+
+        if (!apiJson || !user?.account_id) {
+            setMessage("passwordMessage", "请先登录后修改密码", true);
+            return;
+        }
+
+        if (!oldPassword || !newPassword || !confirmNewPassword) {
+            setMessage("passwordMessage", "请完整填写密码信息", true);
+            return;
+        }
+
+        if (newPassword !== confirmNewPassword) {
+            setMessage("passwordMessage", "两次输入的新密码不一致", true);
+            return;
+        }
+
+        const button = passwordForm.querySelector("button");
+        button.disabled = true;
+        button.textContent = "保存中...";
+
+        try {
+            const result = await apiJson("/home/profile/password", {
+                method: "POST",
+                body: JSON.stringify({
+                    user_id: user.account_id,
+                    old_password: oldPassword,
+                    new_password: newPassword
+                })
+            });
+            passwordForm.reset();
+            setMessage("passwordMessage", result.message);
+        } catch (error) {
+            setMessage("passwordMessage", error.message, true);
+        } finally {
+            button.disabled = false;
+            button.textContent = "保存新密码";
+        }
+    }
+
+    async function boot() {
+        const user = renderProfileFromLoginState();
+        const { setupShell } = getAuditApp();
+
+        if (setupShell) {
+            setupShell("profile");
+        }
+
+        document.getElementById("requestKeys")?.addEventListener("click", requestUserKeys);
+        document.getElementById("passwordForm")?.addEventListener("submit", changePassword);
+
+        document.querySelectorAll("[data-toggle-secret]").forEach((button) => {
+            button.addEventListener("click", () => {
+                const input = document.getElementById(button.dataset.toggleSecret);
+                input.type = input.type === "password" ? "text" : "password";
+            });
         });
-        passwordForm.reset();
-        setMessage("passwordMessage", result.message);
-    } catch (error) {
-        setMessage("passwordMessage", error.message, true);
-    } finally {
-        button.disabled = false;
-        button.textContent = "保存新密码";
-    }
-}
 
-async function boot() {
-    const hasLoginUser = renderProfileFromLoginState();
+        if (!user) {
+            setMessage("passwordMessage", "请先登录后查看用户信息", true);
+            return;
+        }
 
-    if (!setupShell("profile") || !hasLoginUser) {
-        setMessage("passwordMessage", "请先登录后查看用户信息", true);
-        return;
-    }
-
-    requestKeys.addEventListener("click", requestUserKeys);
-    passwordForm.addEventListener("submit", changePassword);
-
-    document.querySelectorAll("[data-toggle-secret]").forEach((button) => {
-        button.addEventListener("click", () => {
-            const input = document.getElementById(button.dataset.toggleSecret);
-            input.type = input.type === "password" ? "text" : "password";
+        await loadProfile(user).catch((error) => {
+            setMessage(
+                "passwordMessage",
+                error.message === "Failed to fetch" ? "无法连接后端服务，已显示登录信息" : error.message,
+                true
+            );
         });
-    });
+    }
 
-    await loadProfile().catch((error) => {
-        setMessage("passwordMessage", error.message === "Failed to fetch" ? "无法连接后端服务，请先启动 FastAPI" : error.message, true);
-    });
-}
-
-boot();
+    document.addEventListener("DOMContentLoaded", boot);
+})();
