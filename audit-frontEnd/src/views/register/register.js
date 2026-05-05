@@ -1,4 +1,5 @@
 const API_BASE_URL = "http://127.0.0.1:8000";
+const REGISTER_SUCCESS_KEY = "auditRegisterSuccess";
 
 function showMessage(message, isError = true) {
     const showMsg = document.getElementById("showMsg");
@@ -39,12 +40,30 @@ async function register(username, password) {
 function openSuccessModal(user) {
     const successModal = document.getElementById("successModal");
     const successMessage = document.getElementById("successMessage");
-    const successLoginButton = document.getElementById("successLoginButton");
     const accountId = user?.account_id || "--";
 
     successMessage.textContent = `注册成功，账号ID：${accountId}。请前往登录页面登录。`;
     successModal.classList.add("open");
     successModal.setAttribute("aria-hidden", "false");
+}
+
+function rememberRegisterSuccess(user) {
+    sessionStorage.setItem(REGISTER_SUCCESS_KEY, JSON.stringify({
+        account_id: user?.account_id || "--"
+    }));
+}
+
+function restoreRegisterSuccess() {
+    const rawSuccess = sessionStorage.getItem(REGISTER_SUCCESS_KEY);
+    if (!rawSuccess) {
+        return;
+    }
+
+    try {
+        openSuccessModal(JSON.parse(rawSuccess));
+    } catch (error) {
+        sessionStorage.removeItem(REGISTER_SUCCESS_KEY);
+    }
 }
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -56,6 +75,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     successLoginButton.addEventListener("click", function(event) {
         event.preventDefault();
+        sessionStorage.removeItem(REGISTER_SUCCESS_KEY);
         window.location.href = "../login/login.html";
     });
 
@@ -96,6 +116,7 @@ document.addEventListener("DOMContentLoaded", function() {
         try {
             const user = await register(username, password);
             localStorage.removeItem("auditUser");
+            rememberRegisterSuccess(user);
             registerForm.reset();
             showMessage(`注册成功，账号ID：${user.account_id}，请前往登录`, false);
             openSuccessModal(user);
@@ -110,4 +131,5 @@ document.addEventListener("DOMContentLoaded", function() {
 
     registerButton.addEventListener("click", handleRegister);
     registerForm.addEventListener("submit", handleRegister);
+    restoreRegisterSuccess();
 });
