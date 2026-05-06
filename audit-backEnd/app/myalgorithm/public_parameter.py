@@ -2,6 +2,7 @@ from charm.toolbox.pairinggroup import G1
 from Crypto.Cipher import AES
 from Crypto.Hash import HMAC, SHA256
 from Crypto.Random import get_random_bytes
+from Crypto.Util.Padding import pad, unpad
 from pydantic import BaseModel
 
 # 全局参数容器
@@ -23,18 +24,22 @@ def H3(group, data: bytes):
 def Enc(k0: bytes, plaintext: bytes):
     iv = get_random_bytes(16)
     cipher = AES.new(k0, AES.MODE_CBC, iv)
-
-    pad_len = 16 - len(plaintext) % 16
-    plaintext += bytes([pad_len]) * pad_len
-
-    return iv + cipher.encrypt(plaintext)
+    ct = cipher.encrypt(pad(plaintext, AES.block_size))
+    return iv + ct
 
 def Dec(k0: bytes, ciphertext: bytes):
+    if len(ciphertext) < AES.block_size:
+        raise ValueError("密文长度不合法")
+
     iv = ciphertext[:16]
     ct = ciphertext[16:]
+
+    if len(ct) % AES.block_size != 0:
+        raise ValueError("密文块长度不是16字节的倍数")
+
     cipher = AES.new(k0, AES.MODE_CBC, iv)
     pt = cipher.decrypt(ct)
-    return pt[:-pt[-1]]
+    return unpad(pt, AES.block_size)
 
 # ================= PRP =================
 def PRP(k1: bytes, data: bytes):
