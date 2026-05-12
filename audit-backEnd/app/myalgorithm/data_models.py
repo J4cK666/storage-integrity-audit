@@ -20,29 +20,14 @@ from typing import Optional, List, Any, Dict
 # ]
 
 
-
-
-
-
-# =========================================================
-# 后续 trapdoor / challenge / proof 可以使用的数据结构
-# =========================================================
-
-
-
-
-
-
-
-
+# =====================
+# 原始方案数据结构
 @dataclass
 class MyFile:
     file_id: str                                  # 文件ID，例如哈希值
     original_filename: Optional[str] = None  # 原始文件名
     data: List[Any] = field(default_factory=list)  # 加密文件块
     authenticator: List[Any] = field(default_factory=list)  # 审计标签(验证器)
-
-
 
 
 GroupElement = Any  # 如果你用 PBC / Charm-Crypto，这里可以放群元素类型
@@ -60,6 +45,7 @@ class KeywordTag:
     file_ids: List[str] = field(default_factory=list)  # 包含该关键词的文件ID集合 Swk
     ral: List[GroupElement] = field(default_factory=list)  # RAL: [Vwk,1, ..., Vwk,s]
 
+# =====================
     
 
 
@@ -92,6 +78,8 @@ class PlainFile:
         明文文件块 [Fi1, Fi2, ..., Fis]
         注意：在 read_file.py 中 blocks 还没有补齐统一 s。
         统一 s 的补齐操作放在 setup.py 中完成。
+    size:
+        文件大小，单位字节。
     """
 
 

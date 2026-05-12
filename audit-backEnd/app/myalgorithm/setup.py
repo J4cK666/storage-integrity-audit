@@ -9,6 +9,13 @@ from .data_models import (
 )
 
 
+def normalize_block(block: bytes, block_size: int) -> bytes:
+    if len(block) > block_size:
+        raise ValueError("block length cannot be greater than block_size")
+
+    return block.ljust(block_size, b"\x00")
+
+
 def bytes_to_int_mod_q(data: bytes, q: Optional[int] = None) -> int:
     """
     将密文块映射为整数，方便后续 AuthGen 中作为指数 cij 使用。
@@ -40,7 +47,13 @@ def setup(
 
     Enc:
         init 阶段定义的 AES 加密函数。
+
+    q:
+        init 阶段定义的群的阶 q。
     """
+
+    if block_size <= 0:
+        raise ValueError("block_size 必须大于 0")
 
     if not files:
         raise ValueError("files 不能为空")
@@ -51,8 +64,8 @@ def setup(
 
     n = len(files)
 
-    # 使用统一 s，取所有文件中最大的块数
-    s = max(file.block_count for file in files)
+    # Use a unified block count s. Existing short blocks are padded below.
+    s = max(len(file.blocks) for file in files)
 
     # =====================
     # 2. 加密每个文件块，生成 C
@@ -62,10 +75,11 @@ def setup(
 
     for file in files:
         encrypted_blocks: List[EncryptedBlock] = []
+        original_block_count = len(file.blocks)
 
         for j in range(1, s + 1):
-            if j <= file.block_count:
-                plain_block = file.blocks[j - 1]
+            if j <= original_block_count:
+                plain_block = normalize_block(file.blocks[j - 1], block_size)
                 is_padding = False
             else:
                 # 短文件补齐到统一块数 s
@@ -90,7 +104,7 @@ def setup(
             file_id=file.file_id,
             file_name=file.file_name,
             blocks=encrypted_blocks,
-            original_block_count=file.block_count
+            original_block_count=original_block_count
         )
 
         C.append(encrypted_file)
