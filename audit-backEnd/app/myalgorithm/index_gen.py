@@ -9,6 +9,7 @@ from .protocol_utils import (
     xor_bytes,
     id_j_bytes,
     address_j_bytes,
+    block_index_bytes,
 )
 
 
@@ -80,7 +81,7 @@ def index_gen(setup_result: SetupResult) -> SecureIndex:
                 h1 = H1(group, id_j_bytes(file_id, j))
                 prod_inv *= h1 ** -1
 
-            h3 = H3(group, j.to_bytes(4, "big"))
+            h3 = H3(group, block_index_bytes(j))
             h2 = H2(group, address_j_bytes(address, j))
 
             base = prod_inv * h3 * h2

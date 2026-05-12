@@ -2,7 +2,7 @@ from charm.toolbox.pairinggroup import G1
 
 from .public_parameter import PP
 from .data_models import Challenge, Proof
-from .protocol_utils import address_j_bytes
+from .protocol_utils import address_j_bytes, block_index_bytes
 
 
 def proof_verify(challenge: Challenge, proof: Proof) -> bool:
@@ -41,7 +41,7 @@ def proof_verify(challenge: Challenge, proof: Proof) -> bool:
         j = item.j
         vj = item.vj
 
-        h3 = H3(group, j.to_bytes(4, "big"))
+        h3 = H3(group, block_index_bytes(j))
         h2 = H2(group, address_j_bytes(address, j))
 
         prod *= (h3 * h2) ** vj

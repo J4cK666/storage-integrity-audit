@@ -5,6 +5,14 @@ def int_to_bytes(value: int, length: int = 4) -> bytes:
     return value.to_bytes(length, "big")
 
 
+def int_to_hash_bytes(value: int) -> bytes:
+    return str(value).encode("ascii")
+
+
+def block_index_bytes(j: int) -> bytes:
+    return b"j:" + int_to_hash_bytes(j)
+
+
 def keyword_to_bytes(keyword: str) -> bytes:
     return keyword.strip().lower().encode("utf-8")
 
@@ -13,14 +21,14 @@ def id_j_bytes(file_id: str, j: int) -> bytes:
     """
     ID_i || j
     """
-    return file_id.encode("utf-8") + b"||" + int_to_bytes(j)
+    return b"ID:" + file_id.encode("utf-8") + b"|j:" + int_to_hash_bytes(j)
 
 
 def address_j_bytes(address: bytes, j: int) -> bytes:
     """
     p(w) || j
     """
-    return address + b"||" + int_to_bytes(j)
+    return b"ADDR:" + address.hex().encode("ascii") + b"|j:" + int_to_hash_bytes(j)
 
 
 def vector_to_bytes(vector: List[int]) -> bytes:
