@@ -10,6 +10,7 @@ try:
     from .home_shared import (
         COMPLETE_STATUS,
         DEFAULT_USER_ID,
+        FILE_MISSING_STATUS,
         AuditRecord,
         connect,
         init_home_tables,
@@ -21,6 +22,7 @@ except ImportError:
     from modules.home_shared import (
         COMPLETE_STATUS,
         DEFAULT_USER_ID,
+        FILE_MISSING_STATUS,
         AuditRecord,
         connect,
         init_home_tables,
@@ -61,7 +63,11 @@ def audit_files(request: AuditRequest) -> AuditResponse:
         raise HTTPException(status_code=400, detail="关键词不能为空")
 
     files = list_files(request.user_id)
-    matched_files = [file for file in files if keyword in file.keywords]
+    matched_files = [
+        file
+        for file in files
+        if keyword in file.keywords and file.audit_status != FILE_MISSING_STATUS
+    ]
     audit_time = now_text()
 
     if not matched_files:
@@ -78,10 +84,11 @@ def audit_files(request: AuditRequest) -> AuditResponse:
             connection.execute(
                 """
                 UPDATE audit_files
-                SET audit_status = ?
+                SET audit_status = ?,
+                    last_audit_time = ?
                 WHERE file_id = ? AND user_id = ?
                 """,
-                (COMPLETE_STATUS, file.file_id, request.user_id),
+                (COMPLETE_STATUS, audit_time, file.file_id, request.user_id),
             )
             connection.execute(
                 """

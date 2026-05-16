@@ -20,8 +20,8 @@ from typing import List, Dict, Union, Any
 import json
 import hashlib
 
-from ..audit_algorithm.data_models import PlainFile
-# from app.audit_algorithm.data_models import PlainFile
+from ..myalgorithm.data_models import PlainFile
+# from app.myalgorithm.data_models import PlainFile
 
 
 def parse_keyword_input(keyword_input: Union[str, Dict[str, List[str]]]) -> Dict[str, List[str]]:
@@ -105,8 +105,6 @@ def split_bytes(data: bytes, block_size: int) -> List[bytes]:
 def make_file_id(file_name: str, file_bytes: bytes) -> str:
     h = hashlib.sha256()
     h.update(file_name.encode("utf-8"))
-    h.update(b"::")
-    h.update(file_bytes)
     return h.hexdigest()
 
 

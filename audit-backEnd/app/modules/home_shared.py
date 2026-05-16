@@ -11,21 +11,22 @@ from fastapi import HTTPException, UploadFile
 from pydantic import BaseModel
 
 try:
-    from ..config.config import CLOUD_ROOT, RUNTIME_DATA_DIR, UPLOAD_DIR
+    from ..config.config import AUDIT_DB_PATH, CLOUD_ROOT
+    from ..config.database import ensure_column
     from .user_security import get_user_by_account_id
 except ImportError:
-    from config.config import CLOUD_ROOT, RUNTIME_DATA_DIR, UPLOAD_DIR
+    from config.config import AUDIT_DB_PATH, CLOUD_ROOT
+    from config.database import ensure_column
     from modules.user_security import get_user_by_account_id
 
 
-DATA_DIR = RUNTIME_DATA_DIR
-DB_PATH = DATA_DIR / "home.db"
+DB_PATH = AUDIT_DB_PATH
 
 DEFAULT_USER_ID = "default-user"
-PENDING_STATUS = "未审计"
-COMPLETE_STATUS = "完整"
-BROKEN_STATUS = "损坏"
-
+PENDING_STATUS = "pending"
+COMPLETE_STATUS = "complete"
+BROKEN_STATUS = "broken"
+FILE_MISSING_STATUS = "missing"
 
 class FileItem(BaseModel):
     file_id: str
@@ -34,6 +35,7 @@ class FileItem(BaseModel):
     upload_time: str
     keywords: List[str]
     audit_status: str
+    last_audit_time: str | None = None
 
 
 class DashboardResponse(BaseModel):
@@ -58,8 +60,7 @@ def now_text() -> str:
 
 
 def connect() -> sqlite3.Connection:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     CLOUD_ROOT.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(DB_PATH)
     connection.row_factory = sqlite3.Row
@@ -78,10 +79,12 @@ def init_home_tables() -> None:
                 file_size INTEGER NOT NULL,
                 upload_time TEXT NOT NULL,
                 keywords TEXT NOT NULL,
-                audit_status TEXT NOT NULL
+                audit_status TEXT NOT NULL,
+                last_audit_time TEXT
             )
             """
         )
+        ensure_column(connection, "audit_files", "last_audit_time", "TEXT")
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS audit_records (
@@ -99,7 +102,7 @@ def init_home_tables() -> None:
 
 def parse_keywords(raw_keywords: str) -> List[str]:
     keywords: List[str] = []
-    normalized = raw_keywords.replace("，", ",").replace("；", ",").replace(";", ",")
+    normalized = raw_keywords.replace("，", ",").replace("；", ";").replace(";", ",")
 
     for item in normalized.split(","):
         keyword = item.strip().lower()
@@ -109,14 +112,16 @@ def parse_keywords(raw_keywords: str) -> List[str]:
     return keywords
 
 
-def row_to_file(row: sqlite3.Row) -> FileItem:
+def row_to_file(row: sqlite3.Row, audit_status: str | None = None) -> FileItem:
+    status = audit_status or row["audit_status"]
     return FileItem(
         file_id=row["file_id"],
         file_name=row["file_name"],
         file_size=row["file_size"],
         upload_time=row["upload_time"],
         keywords=json.loads(row["keywords"]),
-        audit_status=row["audit_status"],
+        audit_status=status,
+        last_audit_time=row["last_audit_time"],
     )
 
 
@@ -145,49 +150,43 @@ def list_files(user_id: str = DEFAULT_USER_ID) -> List[FileItem]:
             (user_id,),
         ).fetchall()
 
-    return [row_to_file(row) for row in rows]
+    files: List[FileItem] = []
+    for row in rows:
+        audit_status = None
+        if not Path(row["storage_path"]).exists():
+            audit_status = FILE_MISSING_STATUS
+        files.append(row_to_file(row, audit_status=audit_status))
+
+    return files
 
 
 def calculate_integrity_ratio(files: List[FileItem]) -> float:
     if not files:
         return 100.0
 
-    complete_or_pending = sum(1 for file in files if file.audit_status != BROKEN_STATUS)
+    incomplete_statuses = {BROKEN_STATUS, FILE_MISSING_STATUS}
+    complete_or_pending = sum(1 for file in files if file.audit_status not in incomplete_statuses)
     return round(complete_or_pending / len(files) * 100, 2)
 
 
 def make_file_id(file_name: str, content: bytes, user_id: str = "") -> str:
     digest = hashlib.sha256()
-    digest.update(user_id.encode("utf-8"))
-    digest.update(b"::")
     digest.update(file_name.encode("utf-8"))
-    digest.update(b"::")
-    digest.update(content)
     return digest.hexdigest()
 
 
 def get_user_cloud_files_dir(user_id: str) -> Path:
     user = get_user_by_account_id(user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        raise HTTPException(status_code=404, detail="user_not_found")
 
     cloud_folder = user["cloud_folder"]
     if not cloud_folder:
-        raise HTTPException(status_code=400, detail="用户云端目录未初始化")
+        raise HTTPException(status_code=400, detail="cloud_folder_not_initialized")
 
     files_dir = CLOUD_ROOT / cloud_folder
     files_dir.mkdir(parents=True, exist_ok=True)
     return files_dir
-
-
-def cleanup_temp_file(path: Path) -> None:
-    if path.exists():
-        path.unlink()
-
-    try:
-        path.parent.rmdir()
-    except OSError:
-        pass
 
 
 def prepare_keyword_forms(files: List[UploadFile], keywords: List[str]) -> List[str]:
@@ -197,4 +196,5 @@ def prepare_keyword_forms(files: List[UploadFile], keywords: List[str]) -> List[
     if len(keywords) == 1:
         return keywords * len(files)
 
-    raise HTTPException(status_code=400, detail="关键词数量必须为 1 个或与文件数量一致")
+    detail = "keyword_count_must_be_one_or_match_file_count"
+    raise HTTPException(status_code=400, detail=detail)
