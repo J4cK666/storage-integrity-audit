@@ -7,6 +7,7 @@ from typing import List
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
+
 try:
     from .home_shared import (
         DEFAULT_USER_ID,
@@ -128,8 +129,8 @@ async def upload_files(
             )
         )
 
-    setup, index_gen, auth_gen = _algorithm_functions()
     try:
+        setup, index_gen, auth_gen = _algorithm_functions()
         setup_result = setup(
             files=plain_files,
             k0=pp["k0"],

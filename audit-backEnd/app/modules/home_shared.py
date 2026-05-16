@@ -3,9 +3,10 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import Iterator, List
 
 from fastapi import HTTPException, UploadFile
 from pydantic import BaseModel
@@ -59,12 +60,80 @@ def now_text() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
-def connect() -> sqlite3.Connection:
+@contextmanager
+def connect() -> Iterator[sqlite3.Connection]:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     CLOUD_ROOT.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(DB_PATH)
     connection.row_factory = sqlite3.Row
-    return connection
+    try:
+        yield connection
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+
+
+def _audit_files_has_composite_primary_key(connection: sqlite3.Connection) -> bool:
+    columns = connection.execute("PRAGMA table_info(audit_files)").fetchall()
+    primary_keys = {
+        column["name"]: column["pk"]
+        for column in columns
+        if column["pk"]
+    }
+    return primary_keys == {"user_id": 1, "file_id": 2}
+
+
+def _migrate_audit_files_primary_key(connection: sqlite3.Connection) -> None:
+    if _audit_files_has_composite_primary_key(connection):
+        return
+
+    connection.execute("ALTER TABLE audit_files RENAME TO audit_files_old")
+    connection.execute(
+        """
+        CREATE TABLE audit_files (
+            file_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            file_name TEXT NOT NULL,
+            storage_path TEXT NOT NULL,
+            file_size INTEGER NOT NULL,
+            upload_time TEXT NOT NULL,
+            keywords TEXT NOT NULL,
+            audit_status TEXT NOT NULL,
+            last_audit_time TEXT,
+            PRIMARY KEY (user_id, file_id)
+        )
+        """
+    )
+    connection.execute(
+        """
+        INSERT OR REPLACE INTO audit_files (
+            file_id,
+            user_id,
+            file_name,
+            storage_path,
+            file_size,
+            upload_time,
+            keywords,
+            audit_status,
+            last_audit_time
+        )
+        SELECT
+            file_id,
+            user_id,
+            file_name,
+            storage_path,
+            file_size,
+            upload_time,
+            keywords,
+            audit_status,
+            last_audit_time
+        FROM audit_files_old
+        """
+    )
+    connection.execute("DROP TABLE audit_files_old")
 
 
 def init_home_tables() -> None:
@@ -72,7 +141,7 @@ def init_home_tables() -> None:
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS audit_files (
-                file_id TEXT PRIMARY KEY,
+                file_id TEXT NOT NULL,
                 user_id TEXT NOT NULL,
                 file_name TEXT NOT NULL,
                 storage_path TEXT NOT NULL,
@@ -80,11 +149,13 @@ def init_home_tables() -> None:
                 upload_time TEXT NOT NULL,
                 keywords TEXT NOT NULL,
                 audit_status TEXT NOT NULL,
-                last_audit_time TEXT
+                last_audit_time TEXT,
+                PRIMARY KEY (user_id, file_id)
             )
             """
         )
         ensure_column(connection, "audit_files", "last_audit_time", "TEXT")
+        _migrate_audit_files_primary_key(connection)
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS audit_records (

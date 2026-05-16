@@ -126,6 +126,7 @@
                     上传成功，已保存 ${uploadedFiles.length} 个文件。可继续选择文件上传，或前往首页查看文件列表。
                 </div>
             `;
+            window.alert(`上传成功，已保存 ${uploadedFiles.length} 个文件。`);
         } catch (error) {
             pendingList.innerHTML = `<div class="empty-row">${escapeHtml(error.message)}</div>`;
         } finally {
