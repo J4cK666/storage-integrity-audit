@@ -15,6 +15,7 @@ try:
         SecureIndexRow,
         SetupResult,
     )
+    from ..myalgorithm.setup import bytes_to_int_mod_q
 except ImportError:
     from myalgorithm.data_models import (
         AuthenticatorSet,
@@ -24,9 +25,9 @@ except ImportError:
         SecureIndexRow,
         SetupResult,
     )
+    from myalgorithm.setup import bytes_to_int_mod_q
 
 
-ENC_SCHEMA = "storage-integrity-audit.encrypted-file.v1"
 AUTH_SCHEMA = "storage-integrity-audit.authenticator-set.v1"
 INDEX_SCHEMA = "storage-integrity-audit.secure-index.v1"
 
@@ -100,46 +101,35 @@ def _deserialize_group_element(group: Any, value: str) -> Any:
     return group.deserialize(_b64_decode(value))
 
 
-def _encrypted_file_to_payload(enc_file: EncryptedFile) -> Dict[str, Any]:
-    return {
-        "schema": ENC_SCHEMA,
-        "file_id": enc_file.file_id,
-        "original_block_count": enc_file.original_block_count,
-        "block_count": len(enc_file.blocks),
-        "blocks": [
-            {
-                "block_index": block.block_index,
-                "ciphertext": _b64_encode(block.ciphertext),
-                "cij_int": str(block.cij_int),
-                "is_padding": block.is_padding,
-            }
-            for block in sorted(enc_file.blocks, key=lambda item: item.block_index)
-        ],
-    }
-
-
-def _payload_to_encrypted_file(payload: Dict[str, Any]) -> EncryptedFile:
-    if payload.get("schema") != ENC_SCHEMA:
-        raise ValueError("invalid encrypted file schema")
-
-    file_id = str(payload["file_id"])
-    blocks = [
-        EncryptedBlock(
-            file_id=file_id,
-            file_name="",
-            block_index=int(block["block_index"]),
-            ciphertext=_b64_decode(block["ciphertext"]),
-            cij_int=int(block["cij_int"]),
-            is_padding=bool(block.get("is_padding", False)),
-        )
-        for block in payload.get("blocks", [])
+def _encrypted_file_to_lines(enc_file: EncryptedFile) -> List[str]:
+    return [
+        _b64_encode(block.ciphertext)
+        for block in sorted(enc_file.blocks, key=lambda item: item.block_index)
     ]
+
+
+def _ciphertext_lines_to_encrypted_file(path: Path, lines: List[str]) -> EncryptedFile:
+    file_id = path.stem
+    blocks = []
+
+    for index, line in enumerate(lines, start=1):
+        ciphertext = _b64_decode(line)
+        blocks.append(
+            EncryptedBlock(
+                file_id=file_id,
+                file_name="",
+                block_index=index,
+                ciphertext=ciphertext,
+                cij_int=bytes_to_int_mod_q(ciphertext),
+                is_padding=False,
+            )
+        )
 
     return EncryptedFile(
         file_id=file_id,
         file_name="",
-        blocks=sorted(blocks, key=lambda item: item.block_index),
-        original_block_count=int(payload["original_block_count"]),
+        blocks=blocks,
+        original_block_count=len(blocks),
     )
 
 
@@ -152,12 +142,16 @@ def save_encrypted_file(
     """
     Save one encrypted data-block file as ``<file_id>.enc``.
 
-    The payload intentionally excludes original file names and paths.
+    The file stores only ciphertext blocks, one base64 block per line.
     """
 
     file_id = _safe_name_component(enc_file.file_id, "file_id")
     path = Path(cloud_dir) / f"{file_id}.enc"
-    return _write_json(path, _encrypted_file_to_payload(enc_file), overwrite)
+    if path.exists() and not overwrite:
+        raise FileExistsError(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(_encrypted_file_to_lines(enc_file)) + "\n", encoding="ascii")
+    return path
 
 
 def save_encrypted_files(
@@ -182,7 +176,13 @@ def save_encrypted_blocks(
 
 
 def load_encrypted_file(path: str | Path) -> EncryptedFile:
-    return _payload_to_encrypted_file(_read_json(Path(path)))
+    encrypted_path = Path(path)
+    lines = [
+        line.strip()
+        for line in encrypted_path.read_text(encoding="ascii").splitlines()
+        if line.strip()
+    ]
+    return _ciphertext_lines_to_encrypted_file(encrypted_path, lines)
 
 
 def load_encrypted_files(

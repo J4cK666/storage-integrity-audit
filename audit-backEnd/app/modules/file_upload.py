@@ -42,7 +42,7 @@ except ImportError:
 
 
 file_upload_router = APIRouter(prefix="/home", tags=["file-upload"])
-DEFAULT_BLOCK_SIZE = 4096
+DEFAULT_BLOCK_SIZE = 1024
 
 
 class UploadResponse(BaseModel):

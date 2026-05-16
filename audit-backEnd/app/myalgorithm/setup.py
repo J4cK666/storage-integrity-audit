@@ -33,7 +33,7 @@ def setup(
     files: List[PlainFile],
     k0: bytes,
     Enc: Callable[[bytes, bytes], bytes],
-    block_size: int = 4096,
+    block_size: int = 1024,
     q: Optional[int] = None
 ) -> SetupResult:
     """

@@ -111,7 +111,7 @@ def make_file_id(file_name: str, file_bytes: bytes) -> str:
 def read_files(
     folder_path: str,
     keyword_input: Union[str, Dict[str, List[str]]],
-    block_size: int = 4096,
+    block_size: int = 1024,
     recursive: bool = False
 ) -> List[PlainFile]:
 
@@ -120,7 +120,7 @@ def read_files(
 
     :param folder_path: 文件夹路径
     :param keyword_input: 用户输入的关键词映射
-    :param block_size: 分块大小，默认 4096 字节
+    :param block_size: 分块大小，默认 1024 字节
     :param recursive: 是否递归读取子文件夹
     :return: 包含文件数量和文件列表的字典
     """

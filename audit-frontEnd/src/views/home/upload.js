@@ -117,8 +117,15 @@
         saveUploads.textContent = "上传中...";
 
         try {
-            await apiForm("/home/files/upload", formData);
-            window.location.href = "./home.html";
+            const result = await apiForm("/home/files/upload", formData);
+            const uploadedFiles = result.files || [];
+            state.pendingFiles = [];
+            renderPendingFiles();
+            pendingList.innerHTML = `
+                <div class="empty-row">
+                    上传成功，已保存 ${uploadedFiles.length} 个文件。可继续选择文件上传，或前往首页查看文件列表。
+                </div>
+            `;
         } catch (error) {
             pendingList.innerHTML = `<div class="empty-row">${escapeHtml(error.message)}</div>`;
         } finally {

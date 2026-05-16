@@ -21,11 +21,7 @@ function readCurrentUser() {
 }
 
 function requireLogin() {
-    if (!currentUser || !currentUser.account_id) {
-        return false;
-    }
-
-    return true;
+    return Boolean(currentUser && currentUser.account_id);
 }
 
 function userId() {
@@ -38,7 +34,7 @@ function formatApiError(data, fallback) {
     }
 
     if (Array.isArray(data.detail)) {
-        return data.detail.map((item) => item.msg).filter(Boolean).join("；") || fallback;
+        return data.detail.map((item) => item.msg).filter(Boolean).join(", ") || fallback;
     }
 
     return fallback;
@@ -100,12 +96,23 @@ function makeKeywordPills(keywords = []) {
     return keywords.map((keyword) => `<span class="keyword-pill">${escapeHtml(keyword)}</span>`).join("");
 }
 
+function statusText(status) {
+    const statusMap = {
+        pending: "未审计",
+        complete: "完整",
+        broken: "损坏",
+        missing: "文件丢失"
+    };
+
+    return statusMap[status] || status || "未知";
+}
+
 function statusClass(status) {
-    if (status === "完整") {
+    if (status === "complete") {
         return "status-complete";
     }
 
-    if (status === "损坏") {
+    if (status === "broken" || status === "missing") {
         return "status-broken";
     }
 
@@ -142,7 +149,7 @@ function updateSidebarToggle(sidebarToggle, appShell) {
 
     const isCollapsed = appShell.classList.contains("nav-collapsed");
     sidebarToggle.setAttribute("aria-expanded", String(!isCollapsed));
-    sidebarToggle.setAttribute("title", isCollapsed ? "放大导航栏" : "缩小导航栏");
+    sidebarToggle.setAttribute("title", isCollapsed ? "展开导航栏" : "收起导航栏");
 }
 
 function bindShellInteractions() {
@@ -187,11 +194,7 @@ function bindShellInteractions() {
     accountButton?.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        if (!accountMenu) {
-            return;
-        }
-
-        accountMenu.classList.toggle("open");
+        accountMenu?.classList.toggle("open");
     });
 
     document.addEventListener("click", (event) => {
@@ -234,5 +237,6 @@ window.AuditApp = {
     makeKeywordPills,
     setupShell,
     statusClass,
+    statusText,
     userId
 };
