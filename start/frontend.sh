@@ -26,4 +26,27 @@ cd "${FRONTEND_DIR}"
 
 echo "Starting frontend: http://${FRONTEND_HOST}:${FRONTEND_PORT}/"
 echo "Login page:        http://${FRONTEND_HOST}:${FRONTEND_PORT}/src/views/login/login.html"
-exec "${PYTHON_BIN}" -m http.server "${FRONTEND_PORT}" --bind "${FRONTEND_HOST}" "$@"
+exec "${PYTHON_BIN}" - "${FRONTEND_PORT}" "${FRONTEND_HOST}" <<'PY'
+import functools
+import os
+import sys
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+
+
+class NoListingHandler(SimpleHTTPRequestHandler):
+    def list_directory(self, path):
+        self.send_error(403, "Directory listing is disabled")
+        return None
+
+
+port = int(sys.argv[1])
+host = sys.argv[2]
+handler = functools.partial(NoListingHandler, directory=os.getcwd())
+server = ThreadingHTTPServer((host, port), handler)
+try:
+    server.serve_forever()
+except KeyboardInterrupt:
+    pass
+finally:
+    server.server_close()
+PY

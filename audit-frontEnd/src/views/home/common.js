@@ -28,6 +28,13 @@ function userId() {
     return currentUser?.account_id || "";
 }
 
+function redirectToLogin() {
+    const loginPath = "../login/login.html";
+    if (!window.location.pathname.endsWith("/login.html")) {
+        window.location.replace(loginPath);
+    }
+}
+
 function formatApiError(data, fallback) {
     if (typeof data.detail === "string") {
         return data.detail;
@@ -157,6 +164,11 @@ function bindShellInteractions() {
         return;
     }
 
+    if (!requireLogin()) {
+        redirectToLogin();
+        return;
+    }
+
     const appShell = document.querySelector(".app-shell");
     const sidebarToggle = document.getElementById("sidebarToggle");
     const accountButton = document.getElementById("accountButton");
@@ -217,6 +229,11 @@ function bindShellInteractions() {
 }
 
 function setupShell(activePage) {
+    if (!requireLogin()) {
+        redirectToLogin();
+        return false;
+    }
+
     bindShellInteractions();
 
     document.querySelectorAll("[data-page]").forEach((item) => {
