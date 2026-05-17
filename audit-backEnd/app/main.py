@@ -7,6 +7,7 @@ try:
     from .config.database import init_user_tables
     from .modules.file_audit import file_audit_router
     from .modules.file_upload import file_upload_router
+    from .modules.admin import admin_router, init_admin_table
     from .modules.home import home_router
     from .modules.home_shared import init_audit_table
     from .router.user import user_router
@@ -14,6 +15,7 @@ except ImportError:
     from config.database import init_user_tables
     from modules.file_audit import file_audit_router
     from modules.file_upload import file_upload_router
+    from modules.admin import admin_router, init_admin_table
     from modules.home import home_router
     from modules.home_shared import init_audit_table
     from router.user import user_router
@@ -23,6 +25,7 @@ except ImportError:
 async def lifespan(app: FastAPI):
     init_user_tables()
     init_audit_table()
+    init_admin_table()
     yield
 
 
@@ -40,6 +43,7 @@ app.include_router(user_router)
 app.include_router(home_router)
 app.include_router(file_upload_router)
 app.include_router(file_audit_router)
+app.include_router(admin_router)
 
 
 @app.get("/")
