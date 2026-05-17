@@ -92,6 +92,8 @@ const fallbackAuditApp = (() => {
     };
 })();
 
+window.__auditExternalScriptLoaded = true;
+
 const auditApp = {
     ...fallbackAuditApp,
     ...(window.AuditApp || {})

@@ -6,9 +6,9 @@
     <title>审计工作台 - 文件审计</title>
     <link rel="icon" type="image/png" href="../../assets/logo/logo.png">
     <script src="./shell-preload.js"></script>
-    <link rel="stylesheet" href="./home.css?v=2026051703">
-    <script src="./common.js?v=2026051703" defer></script>
-    <script src="./audit.js?v=2026051703" defer></script>
+    <link rel="stylesheet" href="./home.css?v=2026051704">
+    <script src="./common.js?v=2026051704" defer></script>
+    <script src="./audit.js?v=2026051704" defer></script>
 </head>
 <body>
     <div class="app-shell">
@@ -90,5 +90,161 @@
             </section>
         </main>
     </div>
+    <script>
+        (() => {
+            const API_BASE_URL = "http://127.0.0.1:8000";
+
+            function readAuditUserId() {
+                try {
+                    const storedUser = JSON.parse(localStorage.getItem("auditUser") || "null");
+                    const user = storedUser?.user || storedUser;
+                    return user?.account_id || user?.user_id || user?.id || "";
+                } catch (error) {
+                    return "";
+                }
+            }
+
+            function setBlockState(message, maxBlockCount = 0) {
+                const input = document.getElementById("auditBlockCount");
+                const hint = document.getElementById("auditBlockHint");
+                if (!input || !hint) {
+                    return;
+                }
+
+                const max = Number(maxBlockCount) || 0;
+                input.disabled = max < 1;
+                input.min = "1";
+                input.step = "1";
+                input.value = max > 0 ? "1" : "";
+                if (max > 0) {
+                    input.max = String(max);
+                } else {
+                    input.removeAttribute("max");
+                }
+                hint.textContent = message;
+            }
+
+            function escapeHtml(value) {
+                return String(value ?? "")
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+
+            function statusText(status) {
+                const statusMap = {
+                    complete: "完整",
+                    broken: "损坏",
+                    missing: "文件丢失",
+                    pending: "未审计",
+                    no_keyword_match: "未命中索引"
+                };
+                return statusMap[status] || status || "未知";
+            }
+
+            async function loadAuditOptionsInline() {
+                const userId = readAuditUserId();
+                if (!userId) {
+                    setBlockState("请先登录后审计");
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/home/audit/options?user_id=${encodeURIComponent(userId)}`);
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(typeof data.detail === "string" ? data.detail : "安全索引读取失败");
+                    }
+
+                    if (!Number(data.max_block_count)) {
+                        throw new Error("未读取到安全索引，请先上传文件或检查云端 .index 文件");
+                    }
+
+                    setBlockState(`可选范围：1 - ${data.max_block_count}`, data.max_block_count);
+                } catch (error) {
+                    const message = error.message === "Failed to fetch" ? "无法连接后端服务" : error.message;
+                    setBlockState(message);
+                    window.alert(message);
+                }
+            }
+
+            async function runAuditInline() {
+                const userId = readAuditUserId();
+                const keywordInput = document.getElementById("auditKeyword");
+                const blockInput = document.getElementById("auditBlockCount");
+                const button = document.getElementById("runAuditButton");
+                const result = document.getElementById("auditResult");
+                const resultBody = document.getElementById("auditResultBody");
+                const keyword = keywordInput?.value.trim() || "";
+                const challengeBlockCount = Number(blockInput?.value || 0);
+
+                if (!userId) {
+                    window.alert("请先登录后审计");
+                    return;
+                }
+                if (!keyword) {
+                    keywordInput?.focus();
+                    return;
+                }
+                if (!challengeBlockCount) {
+                    window.alert("请先选择审计块数");
+                    return;
+                }
+
+                button.disabled = true;
+                button.textContent = "审计中...";
+                try {
+                    const response = await fetch(`${API_BASE_URL}/home/audit`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            keyword,
+                            user_id: userId,
+                            challenge_block_count: challengeBlockCount
+                        })
+                    });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(typeof data.detail === "string" ? data.detail : "审计失败");
+                    }
+
+                    result.innerHTML = `
+                        <div><span>文件数</span><strong>${escapeHtml(data.file_count)}</strong></div>
+                        <div><span>审计块数</span><strong>${escapeHtml(data.challenge_block_count)}</strong></div>
+                        <div><span>审计结果</span><strong>${escapeHtml(statusText(data.audit_result))}</strong></div>
+                        <div><span>审计用时</span><strong>${escapeHtml(data.audit_duration || "--")}</strong></div>
+                    `;
+                    const rows = data.files || [];
+                    resultBody.innerHTML = rows.length
+                        ? rows.map((file) => `
+                            <tr>
+                                <td><strong>${escapeHtml(file.file_name)}</strong><br><span>${escapeHtml(file.file_id)}</span></td>
+                                <td><span class="keyword-pill">${escapeHtml(keyword)}</span></td>
+                                <td><span class="status-pill">${escapeHtml(statusText(file.audit_result))}</span></td>
+                                <td>${escapeHtml(data.audit_duration || "--")}</td>
+                            </tr>
+                        `).join("")
+                        : `<tr class="empty-row"><td colspan="4">未命中关键词：${escapeHtml(keyword)}</td></tr>`;
+                } catch (error) {
+                    const message = error.message === "Failed to fetch" ? "无法连接后端服务" : error.message;
+                    window.alert(message);
+                } finally {
+                    button.disabled = false;
+                    button.textContent = "开始审计";
+                }
+            }
+
+            window.setTimeout(loadAuditOptionsInline, 300);
+            window.setTimeout(() => {
+                if (!window.__auditExternalScriptLoaded) {
+                    document.getElementById("runAuditButton")?.addEventListener("click", runAuditInline);
+                }
+            }, 800);
+        })();
+    </script>
 </body>
 </html>
