@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from time import perf_counter
 from typing import Dict, List
 from uuid import uuid4
 
@@ -82,6 +83,7 @@ class AuditResponse(BaseModel):
     challenge_block_count: int
     file_count: int
     audit_result: str
+    audit_duration: str
     audit_time: str
     files: List[AuditFileResult]
 
@@ -99,6 +101,13 @@ def _algorithm_functions():
         from myalgorithm.trapdoor_gen import trapdoor_gen
 
     return trapdoor_gen, chall_gen, proof_gen, proof_verify
+
+
+def _format_duration(start_time: float) -> str:
+    elapsed = perf_counter() - start_time
+    if elapsed < 1:
+        return f"{elapsed * 1000:.0f} ms"
+    return f"{elapsed:.2f} s"
 
 
 def _get_audit_max_block_count(user_id: str) -> int:
@@ -308,6 +317,7 @@ def get_audit_options(user_id: str = DEFAULT_USER_ID) -> AuditOptionsResponse:
 
 @file_audit_router.post("/audit", response_model=AuditResponse)
 def audit_files(request: AuditRequest) -> AuditResponse:
+    start_time = perf_counter()
     init_audit_table()
 
     keyword = request.keyword.strip().lower()
@@ -349,6 +359,7 @@ def audit_files(request: AuditRequest) -> AuditResponse:
             challenge_block_count=request.challenge_block_count,
             file_count=0,
             audit_result="no_keyword_match",
+            audit_duration=_format_duration(start_time),
             audit_time=audit_time,
             files=[],
         )
@@ -386,6 +397,7 @@ def audit_files(request: AuditRequest) -> AuditResponse:
         challenge_block_count=request.challenge_block_count,
         file_count=len(included_files),
         audit_result=audit_result,
+        audit_duration=_format_duration(start_time),
         audit_time=audit_time,
         files=[
             AuditFileResult(

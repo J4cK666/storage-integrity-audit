@@ -134,6 +134,25 @@ def _create_audit_records_table(connection: sqlite3.Connection) -> None:
     )
 
 
+def _create_audit_files_table(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS audit_files (
+            file_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            file_name TEXT NOT NULL,
+            storage_path TEXT NOT NULL,
+            file_size INTEGER NOT NULL,
+            upload_time TEXT NOT NULL,
+            keywords TEXT NOT NULL,
+            audit_status TEXT NOT NULL,
+            last_audit_time TEXT,
+            PRIMARY KEY (user_id, file_id)
+        )
+        """
+    )
+
+
 def _migrate_audit_records_table(connection: sqlite3.Connection) -> None:
     """
     Old audit_records rows are not kept. If the table shape is not the current
@@ -161,24 +180,10 @@ def _migrate_audit_records_table(connection: sqlite3.Connection) -> None:
 
 def init_audit_table() -> None:
     with connect() as connection:
-        connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS audit_files (
-                file_id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                file_name TEXT NOT NULL,
-                storage_path TEXT NOT NULL,
-                file_size INTEGER NOT NULL,
-                upload_time TEXT NOT NULL,
-                keywords TEXT NOT NULL,
-                audit_status TEXT NOT NULL,
-                last_audit_time TEXT,
-                PRIMARY KEY (user_id, file_id)
-            )
-            """
-        )
+        _create_audit_files_table(connection)
         ensure_column(connection, "audit_files", "last_audit_time", "TEXT")
         _migrate_audit_files_primary_key(connection)
+        _create_audit_files_table(connection)
         _migrate_audit_records_table(connection)
         _create_audit_records_table(connection)
 

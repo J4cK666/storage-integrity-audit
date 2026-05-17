@@ -26,6 +26,17 @@ const auditResultTextMap = {
     challenge_block_count_out_of_range: "审计块数超出范围"
 };
 
+function withTimeout(promise, message, timeoutMs = 8000) {
+    let timeoutId;
+    const timeout = new Promise((_, reject) => {
+        timeoutId = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+    });
+
+    return Promise.race([promise, timeout]).finally(() => {
+        window.clearTimeout(timeoutId);
+    });
+}
+
 function auditResultText(value) {
     return auditResultTextMap[value] || value || "未知";
 }
@@ -65,7 +76,10 @@ function renderBlockPicker(maxBlockCount) {
 
 async function loadAuditOptions() {
     setBlockPickerDisabled("正在读取安全索引...");
-    const options = await apiJson(`/home/audit/options?user_id=${encodeURIComponent(userId())}`);
+    const options = await withTimeout(
+        apiJson(`/home/audit/options?user_id=${encodeURIComponent(userId())}`),
+        "安全索引读取超时，请检查后端服务"
+    );
     renderBlockPicker(options.max_block_count);
 }
 
@@ -84,11 +98,11 @@ function renderAuditSummary(result) {
         <div><span>文件数</span><strong>${result.file_count}</strong></div>
         <div><span>审计块数</span><strong>${escapeHtml(result.challenge_block_count ?? "--")}</strong></div>
         <div><span>审计结果</span><strong>${escapeHtml(auditResultText(result.audit_result))}</strong></div>
-        <div><span>审计时间</span><strong>${escapeHtml(result.audit_time)}</strong></div>
+        <div><span>审计用时</span><strong>${escapeHtml(result.audit_duration ?? "--")}</strong></div>
     `;
 }
 
-function renderAuditRows(rows, keyword, time) {
+function renderAuditRows(rows, keyword, duration) {
     const auditResultBody = document.getElementById("auditResultBody");
 
     if (!rows.length) {
@@ -101,7 +115,7 @@ function renderAuditRows(rows, keyword, time) {
             <td><strong>${escapeHtml(file.file_name)}</strong><br><span>${escapeHtml(file.file_id)}</span></td>
             <td>${makeKeywordPills(getFileKeywords(file.file_id))}</td>
             <td><span class="status-pill ${statusClass(file.audit_result)}">${escapeHtml(auditResultText(file.audit_result))}</span></td>
-            <td>${escapeHtml(time)}</td>
+            <td>${escapeHtml(duration)}</td>
         </tr>
     `).join("");
 }
@@ -140,12 +154,13 @@ async function runAudit() {
         });
         await loadFiles();
         renderAuditSummary(result);
-        renderAuditRows(result.files || [], keyword, result.audit_time);
+        renderAuditRows(result.files || [], keyword, result.audit_duration || "--");
     } catch (error) {
         renderAuditSummary({
             challenge_block_count: challengeBlockCount || "--",
             file_count: 0,
             audit_result: error.message === "Failed to fetch" ? "无法连接后端服务" : error.message,
+            audit_duration: "--",
             audit_time: "--"
         });
         renderAuditRows([], keyword, "--");
@@ -157,6 +172,8 @@ async function runAudit() {
 
 async function boot() {
     if (!setupShell("audit")) {
+        setBlockPickerDisabled("请先登录后审计");
+        runAuditButton.disabled = true;
         return;
     }
 
