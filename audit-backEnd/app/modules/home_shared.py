@@ -59,6 +59,9 @@ class AuditRecord(BaseModel):
     challenge_block_count: int
     included_files: List[AuditRecordFile]
     audit_result: str
+    audit_duration: str
+    proof_left: str
+    proof_right: str
     audit_time: str
 
 
@@ -128,6 +131,9 @@ def _create_audit_records_table(connection: sqlite3.Connection) -> None:
             challenge_block_count INTEGER NOT NULL,
             included_files TEXT NOT NULL,
             audit_result TEXT NOT NULL,
+            audit_duration TEXT NOT NULL,
+            proof_left TEXT NOT NULL,
+            proof_right TEXT NOT NULL,
             audit_time TEXT NOT NULL
         )
         """
@@ -166,6 +172,9 @@ def _migrate_audit_records_table(connection: sqlite3.Connection) -> None:
         "challenge_block_count",
         "included_files",
         "audit_result",
+        "audit_duration",
+        "proof_left",
+        "proof_right",
         "audit_time",
     }
     if not _table_exists(connection, "audit_records"):
@@ -224,6 +233,9 @@ def row_to_record(row: sqlite3.Row) -> AuditRecord:
         challenge_block_count=row["challenge_block_count"],
         included_files=included_files,
         audit_result=row["audit_result"],
+        audit_duration=row["audit_duration"],
+        proof_left=row["proof_left"],
+        proof_right=row["proof_right"],
         audit_time=row["audit_time"],
     )
 

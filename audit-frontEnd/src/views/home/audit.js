@@ -259,6 +259,32 @@ function restoreLastAuditResult() {
     }
 }
 
+async function restoreLatestAuditRecord() {
+    const records = await apiJson(`/home/audit-records?user_id=${encodeURIComponent(userId())}`);
+    const record = Array.isArray(records) ? records[0] : null;
+    if (!record) {
+        restoreLastAuditResult();
+        return;
+    }
+
+    const result = {
+        keyword: record.keyword,
+        challenge_block_count: record.challenge_block_count,
+        file_count: (record.included_files || []).length,
+        audit_result: record.audit_result,
+        audit_duration: record.audit_duration || "--",
+        audit_time: record.audit_time,
+        files: (record.included_files || []).map((file) => ({
+            file_id: file.file_id,
+            file_name: file.file_name,
+            audit_result: file.audit_status
+        }))
+    };
+    saveLastAuditResult(result, record.keyword || "");
+    renderAuditSummary(result);
+    renderAuditRows(result.files || [], record.keyword || "", result.audit_duration || "--");
+}
+
 async function runAudit(event) {
     event?.preventDefault();
     event?.stopPropagation();
@@ -347,7 +373,7 @@ async function boot() {
                 showError(error.message || "安全索引读取失败");
             })
         ]);
-        restoreLastAuditResult();
+        await restoreLatestAuditRecord().catch(restoreLastAuditResult);
     } catch (error) {
         showError(error.message || "文件审计页面初始化失败");
     }

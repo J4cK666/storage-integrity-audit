@@ -1,16 +1,24 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+
 from charm.toolbox.pairinggroup import G1
 
-from .public_parameter import PP
 from .data_models import Challenge, Proof
 from .protocol_utils import address_j_bytes, block_index_bytes
+from .public_parameter import PP
 
 
-def proof_verify(challenge: Challenge, proof: Proof) -> bool:
+@dataclass(frozen=True)
+class ProofVerifyDetails:
+    passed: bool
+    left: str
+    right: str
+
+
+def proof_verify_details(challenge: Challenge, proof: Proof) -> ProofVerifyDetails:
     """
-    实现 ProofVerify(Chal, Proof) -> {0, 1}
-
-    验证：
-        e(T, g) == e((Π(H3(j) * H2(p(w)||j))^vj) * u^m, y)
+    ProofVerify(Chal, Proof) -> verification result plus both pairing sides.
     """
 
     group = PP["group"]
@@ -25,29 +33,30 @@ def proof_verify(challenge: Challenge, proof: Proof) -> bool:
 
     address = challenge.trapdoor.address
 
-    # =====================
-    # 左边 e(T, g)
-    # =====================
-
     left = pair_func(proof.T, g)
 
-    # =====================
-    # 右边
-    # =====================
-
     prod = group.init(G1, 1)
-
     for item in challenge.Q:
         j = item.j
         vj = item.vj
 
         h3 = H3(group, block_index_bytes(j))
         h2 = H2(group, address_j_bytes(address, j))
-
         prod *= (h3 * h2) ** vj
 
     right_base = prod * (u ** proof.m)
     right = pair_func(right_base, y)
-    print("左边 e(T, g):", left)
-    print("右边 e((Π(H3(j) * H2(p(w)||j))^vj) * u^m, y):", right)
-    return left == right
+
+    return ProofVerifyDetails(
+        passed=left == right,
+        left=str(left),
+        right=str(right),
+    )
+
+
+def proof_verify(challenge: Challenge, proof: Proof) -> bool:
+    """
+    Backward-compatible boolean verifier.
+    """
+
+    return proof_verify_details(challenge, proof).passed

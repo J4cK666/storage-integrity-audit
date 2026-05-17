@@ -84,6 +84,8 @@ class AuditResponse(BaseModel):
     file_count: int
     audit_result: str
     audit_duration: str
+    proof_left: str
+    proof_right: str
     audit_time: str
     files: List[AuditFileResult]
 
@@ -92,15 +94,15 @@ def _algorithm_functions():
     try:
         from ..myalgorithm.chall_gen import chall_gen
         from ..myalgorithm.proof_gen import proof_gen
-        from ..myalgorithm.proof_verify import proof_verify
+        from ..myalgorithm.proof_verify import proof_verify_details
         from ..myalgorithm.trapdoor_gen import trapdoor_gen
     except ImportError:
         from myalgorithm.chall_gen import chall_gen
         from myalgorithm.proof_gen import proof_gen
-        from myalgorithm.proof_verify import proof_verify
+        from myalgorithm.proof_verify import proof_verify_details
         from myalgorithm.trapdoor_gen import trapdoor_gen
 
-    return trapdoor_gen, chall_gen, proof_gen, proof_verify
+    return trapdoor_gen, chall_gen, proof_gen, proof_verify_details
 
 
 def _format_duration(start_time: float) -> str:
@@ -261,6 +263,9 @@ def _save_audit_result(
     keyword: str,
     challenge_block_count: int,
     audit_result: str,
+    audit_duration: str,
+    proof_left: str,
+    proof_right: str,
     audit_time: str,
     included_files: List[Dict[str, str]],
 ) -> None:
@@ -285,9 +290,12 @@ def _save_audit_result(
                 challenge_block_count,
                 included_files,
                 audit_result,
+                audit_duration,
+                proof_left,
+                proof_right,
                 audit_time
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 str(uuid4()),
@@ -296,6 +304,9 @@ def _save_audit_result(
                 challenge_block_count,
                 json.dumps(included_files, ensure_ascii=False),
                 audit_result,
+                audit_duration,
+                proof_left,
+                proof_right,
                 audit_time,
             ),
         )
@@ -329,7 +340,7 @@ def audit_files(request: AuditRequest) -> AuditResponse:
     if request.challenge_block_count > setup_result.s:
         raise HTTPException(status_code=400, detail="challenge_block_count_out_of_range")
 
-    trapdoor_gen, chall_gen, proof_gen, proof_verify = _algorithm_functions()
+    trapdoor_gen, chall_gen, proof_gen, proof_verify_details = _algorithm_functions()
 
     try:
         trapdoor = trapdoor_gen(keyword)
@@ -346,11 +357,15 @@ def audit_files(request: AuditRequest) -> AuditResponse:
     audit_time = now_text()
 
     if not file_ids:
+        audit_duration = _format_duration(start_time)
         _save_audit_result(
             user_id=request.user_id,
             keyword=keyword,
             challenge_block_count=request.challenge_block_count,
             audit_result="no_keyword_match",
+            audit_duration=audit_duration,
+            proof_left="",
+            proof_right="",
             audit_time=audit_time,
             included_files=[],
         )
@@ -359,7 +374,9 @@ def audit_files(request: AuditRequest) -> AuditResponse:
             challenge_block_count=request.challenge_block_count,
             file_count=0,
             audit_result="no_keyword_match",
-            audit_duration=_format_duration(start_time),
+            audit_duration=audit_duration,
+            proof_left="",
+            proof_right="",
             audit_time=audit_time,
             files=[],
         )
@@ -371,7 +388,8 @@ def audit_files(request: AuditRequest) -> AuditResponse:
             setup_result=setup_result,
             auth_set=cloud_package.auth_set,
         )
-        aggregate_passed = proof_verify(challenge=challenge, proof=proof)
+        verify_details = proof_verify_details(challenge=challenge, proof=proof)
+        aggregate_passed = verify_details.passed
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"audit_algorithm_failed: {exc}") from exc
 
@@ -383,11 +401,15 @@ def audit_files(request: AuditRequest) -> AuditResponse:
         audit_result = BROKEN_STATUS
 
     included_files = _record_files_payload(file_ids, statuses, db_files)
+    audit_duration = _format_duration(start_time)
     _save_audit_result(
         user_id=request.user_id,
         keyword=keyword,
         challenge_block_count=request.challenge_block_count,
         audit_result=audit_result,
+        audit_duration=audit_duration,
+        proof_left=verify_details.left,
+        proof_right=verify_details.right,
         audit_time=audit_time,
         included_files=included_files,
     )
@@ -397,7 +419,9 @@ def audit_files(request: AuditRequest) -> AuditResponse:
         challenge_block_count=request.challenge_block_count,
         file_count=len(included_files),
         audit_result=audit_result,
-        audit_duration=_format_duration(start_time),
+        audit_duration=audit_duration,
+        proof_left=verify_details.left,
+        proof_right=verify_details.right,
         audit_time=audit_time,
         files=[
             AuditFileResult(

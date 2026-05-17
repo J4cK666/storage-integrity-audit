@@ -6,9 +6,9 @@
     <title>审计工作台 - 审计记录</title>
     <link rel="icon" type="image/png" href="../../assets/logo/logo.png">
     <script src="./shell-preload.js"></script>
-    <link rel="stylesheet" href="./home.css?v=2026051701">
-    <script src="./common.js?v=2026051701" defer></script>
-    <script src="./records.js?v=2026051701" defer></script>
+    <link rel="stylesheet" href="./home.css?v=2026051707">
+    <script src="./common.js?v=2026051707" defer></script>
+    <script src="./records.js?v=2026051707" defer></script>
 </head>
 <body>
     <div class="app-shell">
@@ -61,10 +61,14 @@
                                     <th>审计块数</th>
                                     <th>审计包含文件</th>
                                     <th>审计结果</th>
+                                    <th>审计用时</th>
+                                    <th>ProofVerify</th>
                                     <th>审计时间</th>
                                 </tr>
                             </thead>
-                            <tbody id="recordTableBody"></tbody>
+                            <tbody id="recordTableBody">
+                                <tr class="empty-row"><td colspan="7">正在读取审计记录...</td></tr>
+                            </tbody>
                         </table>
                     </div>
                 </section>
