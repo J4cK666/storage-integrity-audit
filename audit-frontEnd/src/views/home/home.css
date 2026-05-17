@@ -505,7 +505,7 @@ button {
 table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 720px;
+    min-width: 860px;
 }
 
 th,
@@ -549,6 +549,33 @@ td {
     margin: 3px 4px 3px 0;
     color: var(--brand-deep);
     background: rgba(46, 143, 220, 0.1);
+}
+
+.file-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.mini-button {
+    min-height: 32px;
+    padding: 0 10px;
+    border-radius: 10px;
+    color: var(--brand-deep);
+    background: rgba(46, 143, 220, 0.1);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.mini-button:hover {
+    background: rgba(46, 143, 220, 0.18);
+}
+
+.mini-button:disabled {
+    cursor: wait;
+    opacity: 0.66;
 }
 
 .status-pending {

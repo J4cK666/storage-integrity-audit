@@ -57,6 +57,30 @@ function makeKeywordPills(keywords = []) {
     return keywords.map((keyword) => `<span class="keyword-pill">${escapeHtml(keyword)}</span>`).join("");
 }
 
+function plainFileUrl(fileId, disposition = "inline") {
+    const currentUserId = readUserId();
+    const params = new URLSearchParams({
+        user_id: currentUserId,
+        disposition
+    });
+    return `${API_BASE_URL_FALLBACK}/home/files/${encodeURIComponent(fileId)}/plain?${params.toString()}`;
+}
+
+function makeFileActions(file) {
+    if (file.audit_status === "missing") {
+        return `<span class="muted-text">不可用</span>`;
+    }
+
+    const fileId = escapeHtml(file.file_id);
+    const fileName = escapeHtml(file.file_name);
+    return `
+        <div class="file-actions">
+            <button class="mini-button" type="button" data-file-action="preview" data-file-id="${fileId}" data-file-name="${fileName}">预览</button>
+            <button class="mini-button" type="button" data-file-action="download" data-file-id="${fileId}" data-file-name="${fileName}">下载</button>
+        </div>
+    `;
+}
+
 function statusText(status) {
     const appStatusText = getAuditApp().statusText;
     if (appStatusText) {
@@ -112,7 +136,7 @@ function renderFiles(files) {
     const fileTableBody = document.getElementById("fileTableBody");
 
     if (!files.length) {
-        fileTableBody.innerHTML = `<tr class="empty-row"><td colspan="6">暂无文件</td></tr>`;
+        fileTableBody.innerHTML = `<tr class="empty-row"><td colspan="7">暂无文件</td></tr>`;
         return;
     }
 
@@ -124,8 +148,75 @@ function renderFiles(files) {
             <td>${makeKeywordPills(file.keywords || [])}</td>
             <td><span class="status-pill ${statusClass(file.audit_status)}">${escapeHtml(statusText(file.audit_status))}</span></td>
             <td>${escapeHtml(file.last_audit_time || "暂无记录")}</td>
+            <td>${makeFileActions(file)}</td>
         </tr>
     `).join("");
+}
+
+function fallbackDownload(url, fileName) {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+}
+
+async function downloadPlainFile(fileId, fileName) {
+    const url = plainFileUrl(fileId, "attachment");
+
+    if (!window.showSaveFilePicker) {
+        fallbackDownload(url, fileName);
+        return;
+    }
+
+    const handle = await window.showSaveFilePicker({
+        suggestedName: fileName
+    });
+    const response = await fetch(url);
+    if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || "下载失败");
+    }
+
+    const blob = await response.blob();
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+}
+
+function bindFileActions() {
+    const fileTableBody = document.getElementById("fileTableBody");
+    fileTableBody?.addEventListener("click", async (event) => {
+        const button = event.target.closest("[data-file-action]");
+        if (!button) {
+            return;
+        }
+
+        const { fileAction, fileId, fileName } = button.dataset;
+        if (fileAction === "preview") {
+            window.open(plainFileUrl(fileId, "inline"), "_blank", "noopener");
+            return;
+        }
+
+        if (fileAction !== "download") {
+            return;
+        }
+
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = "下载中";
+        try {
+            await downloadPlainFile(fileId, fileName);
+        } catch (error) {
+            if (error.name !== "AbortError") {
+                alert(error.message || "下载失败");
+            }
+        } finally {
+            button.disabled = false;
+            button.textContent = originalText;
+        }
+    });
 }
 
 async function loadDashboard() {
@@ -141,6 +232,7 @@ async function loadDashboard() {
 
 async function boot() {
     getAuditApp().setupShell?.("dashboard");
+    bindFileActions();
 
     try {
         await loadDashboard();
@@ -148,7 +240,7 @@ async function boot() {
         const message = error.message === "Failed to fetch"
             ? "无法连接后端服务，请先启动 FastAPI"
             : error.message;
-        document.getElementById("fileTableBody").innerHTML = `<tr class="empty-row"><td colspan="6">${escapeHtml(message)}</td></tr>`;
+        document.getElementById("fileTableBody").innerHTML = `<tr class="empty-row"><td colspan="7">${escapeHtml(message)}</td></tr>`;
     }
 }
 

@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import mimetypes
+from pathlib import Path
 from typing import List
+from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 try:
@@ -16,6 +20,8 @@ try:
         init_audit_table,
         list_files,
     )
+    from ..tools.save_to_cloud import load_encrypted_file
+    from ..tools.user_info import load_user_runtime_pp
     from .user_security import get_user_by_account_id, make_password_hash, verify_password
 except ImportError:
     from config.database import get_user_db_connection
@@ -28,6 +34,8 @@ except ImportError:
         init_audit_table,
         list_files,
     )
+    from tools.save_to_cloud import load_encrypted_file
+    from tools.user_info import load_user_runtime_pp
     from modules.user_security import get_user_by_account_id, make_password_hash, verify_password
 
 
@@ -87,6 +95,65 @@ def get_dashboard(user_id: str = DEFAULT_USER_ID) -> DashboardResponse:
 @home_router.get("/files", response_model=List[FileItem])
 def get_files(user_id: str = DEFAULT_USER_ID) -> List[FileItem]:
     return list_files(user_id)
+
+
+def _load_plain_file(user_id: str, file_id: str) -> tuple[str, bytes]:
+    init_audit_table()
+
+    with connect() as connection:
+        row = connection.execute(
+            """
+            SELECT file_name, storage_path, file_size
+            FROM audit_files
+            WHERE user_id = ? AND file_id = ?
+            """,
+            (user_id, file_id),
+        ).fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="file_not_found")
+
+    storage_path = Path(row["storage_path"])
+    if not storage_path.exists():
+        raise HTTPException(status_code=404, detail="file_missing")
+
+    pp = load_user_runtime_pp(user_id)
+    if pp is None:
+        raise HTTPException(status_code=404, detail="user_crypto_keys_not_found")
+
+    try:
+        encrypted_file = load_encrypted_file(storage_path)
+        plain_blocks = [
+            pp["Dec"](pp["k0"], block.ciphertext)
+            for block in encrypted_file.blocks
+        ]
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"file_decrypt_failed: {exc}") from exc
+
+    content = b"".join(plain_blocks)[: int(row["file_size"])]
+    return row["file_name"], content
+
+
+@home_router.get("/files/{file_id}/plain")
+def get_plain_file(
+    file_id: str,
+    user_id: str = DEFAULT_USER_ID,
+    disposition: str = "inline",
+) -> Response:
+    file_name, content = _load_plain_file(user_id, file_id)
+    media_type = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
+    content_disposition = "attachment" if disposition == "attachment" else "inline"
+    quoted_name = quote(file_name, safe="")
+
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": (
+                f"{content_disposition}; filename=\"download\"; filename*=UTF-8''{quoted_name}"
+            )
+        },
+    )
 
 
 @home_router.get("/profile", response_model=UserProfile)
