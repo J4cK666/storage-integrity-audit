@@ -1,3 +1,102 @@
+const fallbackAuditApp = (() => {
+    const API_BASE_URL = "http://127.0.0.1:8000";
+
+    function readCurrentUser() {
+        try {
+            const storedUser = JSON.parse(localStorage.getItem("auditUser") || "null");
+            const user = storedUser?.user || storedUser;
+
+            if (user) {
+                user.account_id = user.account_id || user.user_id || user.id || "";
+                user.username = user.username || user.name || "";
+                localStorage.setItem("auditUser", JSON.stringify(user));
+            }
+
+            return user;
+        } catch (error) {
+            localStorage.removeItem("auditUser");
+            return null;
+        }
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function formatApiError(data, fallback) {
+        if (typeof data.detail === "string") {
+            return data.detail;
+        }
+
+        if (Array.isArray(data.detail)) {
+            return data.detail.map((item) => item.msg).filter(Boolean).join(", ") || fallback;
+        }
+
+        return fallback;
+    }
+
+    async function apiJson(path, options = {}) {
+        const response = await fetch(`${API_BASE_URL}${path}`, {
+            ...options,
+            headers: {
+                "Content-Type": "application/json",
+                ...(options.headers || {})
+            }
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(formatApiError(data, "请求失败"));
+        }
+
+        return data;
+    }
+
+    function makeKeywordPills(keywords = []) {
+        return keywords.map((keyword) => `<span class="keyword-pill">${escapeHtml(keyword)}</span>`).join("");
+    }
+
+    function statusClass(status) {
+        if (status === "complete") {
+            return "status-complete";
+        }
+
+        if (status === "broken" || status === "missing") {
+            return "status-broken";
+        }
+
+        return "status-pending";
+    }
+
+    function userId() {
+        return readCurrentUser()?.account_id || "";
+    }
+
+    function setupShell(activePage) {
+        window.AuditApp?.setupShell?.(activePage);
+        return Boolean(userId());
+    }
+
+    return {
+        apiJson,
+        escapeHtml,
+        makeKeywordPills,
+        setupShell,
+        statusClass,
+        userId
+    };
+})();
+
+const auditApp = {
+    ...fallbackAuditApp,
+    ...(window.AuditApp || {})
+};
+
 const {
     apiJson,
     escapeHtml,
@@ -5,7 +104,7 @@ const {
     setupShell,
     statusClass,
     userId
-} = window.AuditApp;
+} = auditApp;
 
 let files = [];
 let maxAuditBlockCount = 0;
@@ -37,6 +136,11 @@ function withTimeout(promise, message, timeoutMs = 8000) {
     });
 }
 
+function showError(message) {
+    auditBlockHint.textContent = message;
+    window.alert(message);
+}
+
 function auditResultText(value) {
     return auditResultTextMap[value] || value || "未知";
 }
@@ -63,7 +167,7 @@ function renderBlockPicker(maxBlockCount) {
     maxAuditBlockCount = Number(maxBlockCount) || 0;
 
     if (maxAuditBlockCount < 1) {
-        setBlockPickerDisabled("未读取到安全索引");
+        setBlockPickerDisabled("未读取到安全索引，请先上传文件");
         return;
     }
 
@@ -76,10 +180,20 @@ function renderBlockPicker(maxBlockCount) {
 
 async function loadAuditOptions() {
     setBlockPickerDisabled("正在读取安全索引...");
+    const currentUserId = userId();
+    if (!currentUserId) {
+        throw new Error("未读取到登录用户，请重新登录");
+    }
+
     const options = await withTimeout(
-        apiJson(`/home/audit/options?user_id=${encodeURIComponent(userId())}`),
+        apiJson(`/home/audit/options?user_id=${encodeURIComponent(currentUserId)}`),
         "安全索引读取超时，请检查后端服务"
     );
+
+    if (!Number(options.max_block_count)) {
+        throw new Error("未读取到安全索引，请先上传文件或检查云端 .index 文件");
+    }
+
     renderBlockPicker(options.max_block_count);
 }
 
@@ -130,7 +244,7 @@ async function runAudit() {
     }
 
     if (maxAuditBlockCount < 1) {
-        auditBlockHint.textContent = "未读取到安全索引，不能发起审计";
+        showError("未读取到安全索引，不能发起审计");
         return;
     }
 
@@ -156,14 +270,16 @@ async function runAudit() {
         renderAuditSummary(result);
         renderAuditRows(result.files || [], keyword, result.audit_duration || "--");
     } catch (error) {
+        const message = error.message === "Failed to fetch" ? "无法连接后端服务" : error.message;
         renderAuditSummary({
             challenge_block_count: challengeBlockCount || "--",
             file_count: 0,
-            audit_result: error.message === "Failed to fetch" ? "无法连接后端服务" : error.message,
+            audit_result: message,
             audit_duration: "--",
             audit_time: "--"
         });
         renderAuditRows([], keyword, "--");
+        window.alert(message);
     } finally {
         runAuditButton.disabled = false;
         runAuditButton.textContent = "开始审计";
@@ -171,34 +287,42 @@ async function runAudit() {
 }
 
 async function boot() {
-    if (!setupShell("audit")) {
-        setBlockPickerDisabled("请先登录后审计");
-        runAuditButton.disabled = true;
-        return;
+    try {
+        if (!setupShell("audit")) {
+            setBlockPickerDisabled("请先登录后审计");
+            runAuditButton.disabled = true;
+            return;
+        }
+
+        runAuditButton.addEventListener("click", runAudit);
+        auditKeyword.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                runAudit();
+            }
+        });
+        auditBlockCount.addEventListener("change", () => {
+            const selected = normalizeBlockCount();
+            if (selected >= 1 && selected <= maxAuditBlockCount) {
+                auditBlockHint.textContent = `可选范围：1 - ${maxAuditBlockCount}`;
+            }
+        });
+
+        await Promise.all([
+            loadFiles().catch(() => {
+                files = [];
+            }),
+            loadAuditOptions().catch((error) => {
+                showError(error.message || "安全索引读取失败");
+            })
+        ]);
+    } catch (error) {
+        showError(error.message || "文件审计页面初始化失败");
     }
-
-    runAuditButton.addEventListener("click", runAudit);
-    auditKeyword.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") {
-            event.preventDefault();
-            runAudit();
-        }
-    });
-    auditBlockCount.addEventListener("change", () => {
-        const selected = normalizeBlockCount();
-        if (selected >= 1 && selected <= maxAuditBlockCount) {
-            auditBlockHint.textContent = `可选范围：1 - ${maxAuditBlockCount}`;
-        }
-    });
-
-    await Promise.all([
-        loadFiles().catch(() => {
-            files = [];
-        }),
-        loadAuditOptions().catch((error) => {
-            setBlockPickerDisabled(error.message || "安全索引读取失败");
-        })
-    ]);
 }
 
-boot();
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+} else {
+    boot();
+}
