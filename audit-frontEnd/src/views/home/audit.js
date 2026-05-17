@@ -115,6 +115,7 @@ const auditKeyword = document.getElementById("auditKeyword");
 const auditBlockCount = document.getElementById("auditBlockCount");
 const auditBlockHint = document.getElementById("auditBlockHint");
 const runAuditButton = document.getElementById("runAuditButton");
+const LAST_AUDIT_RESULT_KEY = "lastAuditResult";
 
 const auditResultTextMap = {
     complete: "完整",
@@ -236,7 +237,32 @@ function renderAuditRows(rows, keyword, duration) {
     `).join("");
 }
 
-async function runAudit() {
+function saveLastAuditResult(result, keyword) {
+    sessionStorage.setItem(LAST_AUDIT_RESULT_KEY, JSON.stringify({ result, keyword }));
+}
+
+function restoreLastAuditResult() {
+    try {
+        const cached = JSON.parse(sessionStorage.getItem(LAST_AUDIT_RESULT_KEY) || "null");
+        if (!cached?.result) {
+            return;
+        }
+
+        renderAuditSummary(cached.result);
+        renderAuditRows(
+            cached.result.files || [],
+            cached.keyword || cached.result.keyword || "",
+            cached.result.audit_duration || "--"
+        );
+    } catch (error) {
+        sessionStorage.removeItem(LAST_AUDIT_RESULT_KEY);
+    }
+}
+
+async function runAudit(event) {
+    event?.preventDefault();
+    event?.stopPropagation();
+
     const keyword = auditKeyword.value.trim();
     const challengeBlockCount = normalizeBlockCount();
 
@@ -269,17 +295,20 @@ async function runAudit() {
             })
         });
         await loadFiles();
+        saveLastAuditResult(result, keyword);
         renderAuditSummary(result);
         renderAuditRows(result.files || [], keyword, result.audit_duration || "--");
     } catch (error) {
         const message = error.message === "Failed to fetch" ? "无法连接后端服务" : error.message;
-        renderAuditSummary({
+        const errorResult = {
             challenge_block_count: challengeBlockCount || "--",
             file_count: 0,
             audit_result: message,
             audit_duration: "--",
             audit_time: "--"
-        });
+        };
+        saveLastAuditResult(errorResult, keyword);
+        renderAuditSummary(errorResult);
         renderAuditRows([], keyword, "--");
         window.alert(message);
     } finally {
@@ -300,7 +329,7 @@ async function boot() {
         auditKeyword.addEventListener("keydown", (event) => {
             if (event.key === "Enter") {
                 event.preventDefault();
-                runAudit();
+                runAudit(event);
             }
         });
         auditBlockCount.addEventListener("change", () => {
@@ -318,6 +347,7 @@ async function boot() {
                 showError(error.message || "安全索引读取失败");
             })
         ]);
+        restoreLastAuditResult();
     } catch (error) {
         showError(error.message || "文件审计页面初始化失败");
     }

@@ -6,9 +6,9 @@
     <title>审计工作台 - 文件审计</title>
     <link rel="icon" type="image/png" href="../../assets/logo/logo.png">
     <script src="./shell-preload.js"></script>
-    <link rel="stylesheet" href="./home.css?v=2026051704">
-    <script src="./common.js?v=2026051704" defer></script>
-    <script src="./audit.js?v=2026051704" defer></script>
+    <link rel="stylesheet" href="./home.css?v=2026051705">
+    <script src="./common.js?v=2026051705" defer></script>
+    <script src="./audit.js?v=2026051705" defer></script>
 </head>
 <body>
     <div class="app-shell">
@@ -93,6 +93,7 @@
     <script>
         (() => {
             const API_BASE_URL = "http://127.0.0.1:8000";
+            const LAST_AUDIT_RESULT_KEY = "lastAuditResult";
 
             function readAuditUserId() {
                 try {
@@ -170,7 +171,10 @@
                 }
             }
 
-            async function runAuditInline() {
+            async function runAuditInline(event) {
+                event?.preventDefault();
+                event?.stopPropagation();
+
                 const userId = readAuditUserId();
                 const keywordInput = document.getElementById("auditKeyword");
                 const blockInput = document.getElementById("auditBlockCount");
@@ -212,6 +216,7 @@
                         throw new Error(typeof data.detail === "string" ? data.detail : "审计失败");
                     }
 
+                    sessionStorage.setItem(LAST_AUDIT_RESULT_KEY, JSON.stringify({ result: data, keyword }));
                     result.innerHTML = `
                         <div><span>文件数</span><strong>${escapeHtml(data.file_count)}</strong></div>
                         <div><span>审计块数</span><strong>${escapeHtml(data.challenge_block_count)}</strong></div>
@@ -241,7 +246,7 @@
             window.setTimeout(loadAuditOptionsInline, 300);
             window.setTimeout(() => {
                 if (!window.__auditExternalScriptLoaded) {
-                    document.getElementById("runAuditButton")?.addEventListener("click", runAuditInline);
+                    document.getElementById("runAuditButton")?.addEventListener("click", (event) => runAuditInline(event));
                 }
             }, 800);
         })();
