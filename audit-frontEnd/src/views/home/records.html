@@ -6,9 +6,9 @@
     <title>审计工作台 - 审计记录</title>
     <link rel="icon" type="image/png" href="../../assets/logo/logo.png">
     <script src="./shell-preload.js"></script>
-    <link rel="stylesheet" href="./home.css?v=2026051707">
-    <script src="./common.js?v=2026051707" defer></script>
-    <script src="./records.js?v=2026051707" defer></script>
+    <link rel="stylesheet" href="./home.css?v=2026051708">
+    <script src="./common.js?v=2026051708" defer></script>
+    <script src="./records.js?v=2026051708" defer></script>
 </head>
 <body>
     <div class="app-shell">
@@ -62,12 +62,11 @@
                                     <th>审计包含文件</th>
                                     <th>审计结果</th>
                                     <th>审计用时</th>
-                                    <th>ProofVerify</th>
                                     <th>审计时间</th>
                                 </tr>
                             </thead>
                             <tbody id="recordTableBody">
-                                <tr class="empty-row"><td colspan="7">正在读取审计记录...</td></tr>
+                                <tr class="empty-row"><td colspan="6">正在读取审计记录...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -75,5 +74,112 @@
             </section>
         </main>
     </div>
+    <script>
+        (() => {
+            const API_BASE_URL = "http://127.0.0.1:8000";
+
+            function readUserId() {
+                try {
+                    const storedUser = JSON.parse(localStorage.getItem("auditUser") || "null");
+                    const user = storedUser?.user || storedUser;
+                    return user?.account_id || user?.user_id || user?.id || "";
+                } catch (error) {
+                    return "";
+                }
+            }
+
+            function escapeHtml(value) {
+                return String(value ?? "")
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+
+            function statusText(status) {
+                const statusMap = {
+                    pending: "未审计",
+                    complete: "完整",
+                    broken: "损坏",
+                    missing: "文件丢失",
+                    no_keyword_match: "未命中索引"
+                };
+                return statusMap[status] || status || "未知";
+            }
+
+            function statusClass(status) {
+                if (status === "complete") {
+                    return "status-complete";
+                }
+                if (status === "broken" || status === "missing") {
+                    return "status-broken";
+                }
+                return "status-pending";
+            }
+
+            function renderFiles(files = []) {
+                if (!files.length) {
+                    return `<span class="muted-text">无命中文件</span>`;
+                }
+                return `
+                    <div class="record-file-list">
+                        ${files.map((file) => `
+                            <div class="record-file-item">
+                                <div>
+                                    <strong>${escapeHtml(file.file_name)}</strong>
+                                    <span>${escapeHtml(file.file_id)}</span>
+                                </div>
+                                <span class="status-pill ${statusClass(file.audit_status)}">${escapeHtml(statusText(file.audit_status))}</span>
+                            </div>
+                        `).join("")}
+                    </div>
+                `;
+            }
+
+            function renderRecords(records) {
+                const body = document.getElementById("recordTableBody");
+                if (!records.length) {
+                    body.innerHTML = `<tr class="empty-row"><td colspan="6">暂无审计记录，请先在文件审计页面完成一次审计</td></tr>`;
+                    return;
+                }
+                body.innerHTML = records.map((record) => `
+                    <tr>
+                        <td><span class="keyword-pill">${escapeHtml(record.keyword)}</span></td>
+                        <td>${escapeHtml(record.challenge_block_count)}</td>
+                        <td>${renderFiles(record.included_files || [])}</td>
+                        <td><span class="status-pill ${statusClass(record.audit_result)}">${escapeHtml(statusText(record.audit_result))}</span></td>
+                        <td>${escapeHtml(record.audit_duration || "--")}</td>
+                        <td>${escapeHtml(record.audit_time || "--")}</td>
+                    </tr>
+                `).join("");
+            }
+
+            async function loadRecordsInline() {
+                if (window.__recordsExternalScriptLoaded) {
+                    return;
+                }
+                const body = document.getElementById("recordTableBody");
+                const userId = readUserId();
+                if (!userId) {
+                    body.innerHTML = `<tr class="empty-row"><td colspan="6">请先登录后查看审计记录</td></tr>`;
+                    return;
+                }
+                try {
+                    const response = await fetch(`${API_BASE_URL}/home/audit-records?user_id=${encodeURIComponent(userId)}`);
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(typeof data.detail === "string" ? data.detail : "读取审计记录失败");
+                    }
+                    renderRecords(Array.isArray(data) ? data : []);
+                } catch (error) {
+                    const message = error.message === "Failed to fetch" ? "无法连接后端服务，请先启动 FastAPI" : error.message;
+                    body.innerHTML = `<tr class="empty-row"><td colspan="6">${escapeHtml(message)}</td></tr>`;
+                }
+            }
+
+            window.setTimeout(loadRecordsInline, 500);
+        })();
+    </script>
 </body>
 </html>
