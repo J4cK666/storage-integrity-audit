@@ -1,4 +1,7 @@
 (function() {
+    const SECRET_ICON_SHOW = "../../assets/icons/eye-show.svg";
+    const SECRET_ICON_HIDE = "../../assets/icons/eye-hide.svg";
+
     function getStoredUser() {
         try {
             const storedUser = JSON.parse(localStorage.getItem("auditUser") || "null");
@@ -74,6 +77,31 @@
         return window.AuditApp || {};
     }
 
+    function secretName(input) {
+        return input.id === "privateKeyField" ? "私钥" : "公钥";
+    }
+
+    function updateSecretButton(button, input) {
+        const isVisible = input.type === "text";
+        const img = button.querySelector("img");
+        const action = isVisible ? "隐藏" : "显示";
+        const label = `${action}${secretName(input)}`;
+
+        if (img) {
+            img.src = isVisible ? SECRET_ICON_HIDE : SECRET_ICON_SHOW;
+        }
+        button.setAttribute("aria-label", label);
+        button.setAttribute("title", label);
+        button.classList.toggle("is-visible", isVisible);
+    }
+
+    function setSecretVisible(input, visible) {
+        input.type = visible ? "text" : "password";
+        document
+            .querySelectorAll(`[data-toggle-secret="${input.id}"]`)
+            .forEach((button) => updateSecretButton(button, input));
+    }
+
     async function loadProfile(user) {
         const { apiJson } = getAuditApp();
         if (!apiJson || !user?.account_id) {
@@ -104,9 +132,9 @@
             const keys = await apiJson(`/home/profile/keys?user_id=${encodeURIComponent(user.account_id)}`);
             document.getElementById("publicKeyField").value = keys.public_key;
             document.getElementById("privateKeyField").value = keys.private_key;
-            document.getElementById("publicKeyField").type = "password";
-            document.getElementById("privateKeyField").type = "password";
-            setMessage("keyMessage", "密钥已获取，默认以黑点隐藏");
+            setSecretVisible(document.getElementById("publicKeyField"), false);
+            setSecretVisible(document.getElementById("privateKeyField"), false);
+            setMessage("keyMessage", "密钥已获取");
         } catch (error) {
             setMessage("keyMessage", error.message, true);
         } finally {
@@ -175,9 +203,17 @@
         document.getElementById("passwordForm")?.addEventListener("submit", changePassword);
 
         document.querySelectorAll("[data-toggle-secret]").forEach((button) => {
+            const input = document.getElementById(button.dataset.toggleSecret);
+            if (input) {
+                updateSecretButton(button, input);
+            }
+
             button.addEventListener("click", () => {
                 const input = document.getElementById(button.dataset.toggleSecret);
-                input.type = input.type === "password" ? "text" : "password";
+                if (!input) {
+                    return;
+                }
+                setSecretVisible(input, input.type === "password");
             });
         });
 

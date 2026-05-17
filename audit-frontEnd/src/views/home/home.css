@@ -922,11 +922,20 @@ td {
 .secret-input button {
     width: 44px;
     height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     border-radius: 14px;
     background: rgba(46, 143, 220, 0.1);
     color: var(--brand-deep);
     cursor: pointer;
     font-weight: 800;
+}
+
+.secret-input button img {
+    width: 22px;
+    height: 22px;
+    display: block;
 }
 
 .form-message {
