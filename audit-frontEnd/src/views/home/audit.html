@@ -7,8 +7,9 @@
     <link rel="icon" type="image/png" href="../../assets/logo/logo.png">
     <script src="./shell-preload.js"></script>
     <link rel="stylesheet" href="./home.css?v=2026051706">
-    <script src="./common.js?v=2026051706" defer></script>
-    <script src="./audit.js?v=2026051706" defer></script>
+    <script src="../../config.js?v=2026051713"></script>
+    <script src="./common.js?v=2026051713" defer></script>
+    <script src="./audit.js?v=2026051713" defer></script>
 </head>
 <body>
     <div class="app-shell">
@@ -92,7 +93,7 @@
     </div>
     <script>
         (() => {
-            const API_BASE_URL = "http://127.0.0.1:8000";
+            const API_BASE_URL = window.AUDIT_CONFIG.API_BASE_URL;
             const LAST_AUDIT_RESULT_KEY = "lastAuditResult";
 
             function readAuditUserId() {

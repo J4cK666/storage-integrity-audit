@@ -24,7 +24,8 @@ async function loginAdmin(event) {
     setMessage("");
 
     try {
-        const response = await fetch("http://127.0.0.1:8000/admin/login", {
+        const apiBaseUrl = window.AUDIT_CONFIG.API_BASE_URL;
+        const response = await fetch(`${apiBaseUrl}/admin/login`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"

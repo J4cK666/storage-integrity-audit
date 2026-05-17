@@ -1,4 +1,4 @@
-const API_BASE_URL_FALLBACK = "http://127.0.0.1:8000";
+const API_BASE_URL_FALLBACK = window.AUDIT_CONFIG.API_BASE_URL;
 
 function getAuditApp() {
     return window.AuditApp || {};

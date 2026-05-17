@@ -49,7 +49,8 @@ const adminRuntime = (() => {
     }
 
     async function apiJson(path) {
-        const response = await fetch(`http://127.0.0.1:8000${path}`, {
+        const apiBaseUrl = window.AUDIT_CONFIG.API_BASE_URL;
+        const response = await fetch(`${apiBaseUrl}${path}`, {
             headers: {
                 "Content-Type": "application/json"
             }
