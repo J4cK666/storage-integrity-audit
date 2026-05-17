@@ -47,11 +47,17 @@ class DashboardResponse(BaseModel):
     files: List[FileItem]
 
 
-class AuditRecord(BaseModel):
-    record_id: str
+class AuditRecordFile(BaseModel):
     file_id: str
     file_name: str
+    audit_status: str
+
+
+class AuditRecord(BaseModel):
+    record_id: str
     keyword: str
+    challenge_block_count: int
+    included_files: List[AuditRecordFile]
     audit_result: str
     audit_time: str
 
@@ -90,53 +96,70 @@ def _migrate_audit_files_primary_key(connection: sqlite3.Connection) -> None:
     if _audit_files_has_composite_primary_key(connection):
         return
 
-    connection.execute("ALTER TABLE audit_files RENAME TO audit_files_old")
+    connection.execute("DROP TABLE audit_files")
+
+
+def _table_exists(connection: sqlite3.Connection, table_name: str) -> bool:
+    row = connection.execute(
+        """
+        SELECT 1
+        FROM sqlite_master
+        WHERE type = 'table' AND name = ?
+        """,
+        (table_name,),
+    ).fetchone()
+    return row is not None
+
+
+def _table_columns(connection: sqlite3.Connection, table_name: str) -> set[str]:
+    return {
+        column["name"]
+        for column in connection.execute(f"PRAGMA table_info({table_name})").fetchall()
+    }
+
+
+def _create_audit_records_table(connection: sqlite3.Connection) -> None:
     connection.execute(
         """
-        CREATE TABLE audit_files (
-            file_id TEXT NOT NULL,
+        CREATE TABLE IF NOT EXISTS audit_records (
+            record_id TEXT PRIMARY KEY,
             user_id TEXT NOT NULL,
-            file_name TEXT NOT NULL,
-            storage_path TEXT NOT NULL,
-            file_size INTEGER NOT NULL,
-            upload_time TEXT NOT NULL,
-            keywords TEXT NOT NULL,
-            audit_status TEXT NOT NULL,
-            last_audit_time TEXT,
-            PRIMARY KEY (user_id, file_id)
+            keyword TEXT NOT NULL,
+            challenge_block_count INTEGER NOT NULL,
+            included_files TEXT NOT NULL,
+            audit_result TEXT NOT NULL,
+            audit_time TEXT NOT NULL
         )
         """
     )
-    connection.execute(
-        """
-        INSERT OR REPLACE INTO audit_files (
-            file_id,
-            user_id,
-            file_name,
-            storage_path,
-            file_size,
-            upload_time,
-            keywords,
-            audit_status,
-            last_audit_time
-        )
-        SELECT
-            file_id,
-            user_id,
-            file_name,
-            storage_path,
-            file_size,
-            upload_time,
-            keywords,
-            audit_status,
-            last_audit_time
-        FROM audit_files_old
-        """
-    )
-    connection.execute("DROP TABLE audit_files_old")
 
 
-def init_home_tables() -> None:
+def _migrate_audit_records_table(connection: sqlite3.Connection) -> None:
+    """
+    Old audit_records rows are not kept. If the table shape is not the current
+    one, drop it and rebuild a clean table.
+    """
+
+    required_columns = {
+        "record_id",
+        "user_id",
+        "keyword",
+        "challenge_block_count",
+        "included_files",
+        "audit_result",
+        "audit_time",
+    }
+    if not _table_exists(connection, "audit_records"):
+        return
+
+    columns = _table_columns(connection, "audit_records")
+    if required_columns.issubset(columns):
+        return
+
+    connection.execute("DROP TABLE audit_records")
+
+
+def init_audit_table() -> None:
     with connect() as connection:
         connection.execute(
             """
@@ -156,19 +179,8 @@ def init_home_tables() -> None:
         )
         ensure_column(connection, "audit_files", "last_audit_time", "TEXT")
         _migrate_audit_files_primary_key(connection)
-        connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS audit_records (
-                record_id TEXT PRIMARY KEY,
-                user_id TEXT NOT NULL,
-                file_id TEXT NOT NULL,
-                file_name TEXT NOT NULL,
-                keyword TEXT NOT NULL,
-                audit_result TEXT NOT NULL,
-                audit_time TEXT NOT NULL
-            )
-            """
-        )
+        _migrate_audit_records_table(connection)
+        _create_audit_records_table(connection)
 
 
 def parse_keywords(raw_keywords: str) -> List[str]:
@@ -197,18 +209,22 @@ def row_to_file(row: sqlite3.Row, audit_status: str | None = None) -> FileItem:
 
 
 def row_to_record(row: sqlite3.Row) -> AuditRecord:
+    included_files = [
+        AuditRecordFile(**item)
+        for item in json.loads(row["included_files"])
+    ]
     return AuditRecord(
         record_id=row["record_id"],
-        file_id=row["file_id"],
-        file_name=row["file_name"],
         keyword=row["keyword"],
+        challenge_block_count=row["challenge_block_count"],
+        included_files=included_files,
         audit_result=row["audit_result"],
         audit_time=row["audit_time"],
     )
 
 
 def list_files(user_id: str = DEFAULT_USER_ID) -> List[FileItem]:
-    init_home_tables()
+    init_audit_table()
 
     with connect() as connection:
         rows = connection.execute(

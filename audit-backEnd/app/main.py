@@ -8,21 +8,21 @@ try:
     from .modules.file_audit import file_audit_router
     from .modules.file_upload import file_upload_router
     from .modules.home import home_router
-    from .modules.home_shared import init_home_tables
+    from .modules.home_shared import init_audit_table
     from .router.user import user_router
 except ImportError:
     from config.database import init_user_tables
     from modules.file_audit import file_audit_router
     from modules.file_upload import file_upload_router
     from modules.home import home_router
-    from modules.home_shared import init_home_tables
+    from modules.home_shared import init_audit_table
     from router.user import user_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_user_tables()
-    init_home_tables()
+    init_audit_table()
     yield
 
 

@@ -15,7 +15,7 @@ try:
         FileItem,
         connect,
         get_user_cloud_files_dir,
-        init_home_tables,
+        init_audit_table,
         make_file_id,
         now_text,
         parse_keywords,
@@ -31,7 +31,7 @@ except ImportError:
         FileItem,
         connect,
         get_user_cloud_files_dir,
-        init_home_tables,
+        init_audit_table,
         make_file_id,
         now_text,
         parse_keywords,
@@ -81,7 +81,7 @@ async def upload_files(
     keywords: List[str] = Form(...),
     user_id: str = Form(DEFAULT_USER_ID),
 ) -> UploadResponse:
-    init_home_tables()
+    init_audit_table()
     cloud_files_dir = get_user_cloud_files_dir(user_id)
 
     if not files:

@@ -13,7 +13,7 @@ try:
         FileItem,
         calculate_integrity_ratio,
         connect,
-        init_home_tables,
+        init_audit_table,
         list_files,
     )
     from .user_security import get_user_by_account_id, make_password_hash, verify_password
@@ -25,7 +25,7 @@ except ImportError:
         FileItem,
         calculate_integrity_ratio,
         connect,
-        init_home_tables,
+        init_audit_table,
         list_files,
     )
     from modules.user_security import get_user_by_account_id, make_password_hash, verify_password

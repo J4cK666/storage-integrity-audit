@@ -6,9 +6,9 @@
     <title>审计工作台 - 文件审计</title>
     <link rel="icon" type="image/png" href="../../assets/logo/logo.png">
     <script src="./shell-preload.js"></script>
-    <link rel="stylesheet" href="./home.css">
-    <script src="./common.js" defer></script>
-    <script src="./audit.js" defer></script>
+    <link rel="stylesheet" href="./home.css?v=2026051603">
+    <script src="./common.js?v=2026051603" defer></script>
+    <script src="./audit.js?v=2026051603" defer></script>
 </head>
 <body>
     <div class="app-shell">
@@ -20,7 +20,7 @@
             <nav class="side-nav" aria-label="主导航">
                 <a class="nav-item" href="./home.html" data-page="dashboard"><span class="nav-icon">⌂</span><span class="nav-label">首页</span></a>
                 <a class="nav-item" href="./upload.html" data-page="upload"><span class="nav-icon">↑</span><span class="nav-label">上传文件</span></a>
-                <a class="nav-item active" href="./audit.html" data-page="audit"><span class="nav-icon">◎</span><span class="nav-label">文件审计</span></a>
+                <a class="nav-item active" href="./audit.html" data-page="audit"><span class="nav-icon">◆</span><span class="nav-label">文件审计</span></a>
                 <a class="nav-item" href="./records.html" data-page="records"><span class="nav-icon">≡</span><span class="nav-label">审计记录</span></a>
             </nav>
             <div class="account-area">
@@ -54,14 +54,22 @@
                         </div>
                     </div>
                     <div class="audit-form" id="auditForm">
-                        <label for="auditKeyword">关键词</label>
                         <div class="audit-input-row">
-                            <input id="auditKeyword" type="text" placeholder="例如：file、contract、report">
+                            <div class="audit-field">
+                                <label for="auditKeyword">关键词</label>
+                                <input id="auditKeyword" type="text" placeholder="例如：file、contract、report">
+                            </div>
+                            <div class="audit-field audit-block-field">
+                                <label for="auditBlockCount">审计块数</label>
+                                <input id="auditBlockCount" type="number" min="1" step="1" disabled>
+                                <span id="auditBlockHint" class="field-hint">正在读取安全索引...</span>
+                            </div>
                             <button class="primary-button" id="runAuditButton" type="button">开始审计</button>
                         </div>
                     </div>
                     <div class="audit-result" id="auditResult">
                         <div><span>文件数</span><strong>0</strong></div>
+                        <div><span>审计块数</span><strong>--</strong></div>
                         <div><span>审计结果</span><strong>等待关键词</strong></div>
                         <div><span>审计时间</span><strong>--</strong></div>
                     </div>
