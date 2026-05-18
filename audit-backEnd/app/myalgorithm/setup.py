@@ -9,11 +9,20 @@ from .data_models import (
 )
 
 
-def normalize_block(block: bytes, block_size: int) -> bytes:
-    if len(block) > block_size:
-        raise ValueError("block length cannot be greater than block_size")
+def split_file_by_s(data: bytes, s: int) -> List[bytes]:
+    if s <= 0:
+        raise ValueError("s must be greater than 0")
 
-    return block.ljust(block_size, b"\x00")
+    file_size = len(data)
+    block_len = (file_size + s - 1) // s
+    blocks: List[bytes] = []
+
+    for j in range(s):
+        start = j * block_len
+        end = min(start + block_len, file_size)
+        blocks.append(data[start:end])
+
+    return blocks
 
 
 def bytes_to_int_mod_q(data: bytes, q: Optional[int] = None) -> int:
@@ -33,7 +42,7 @@ def setup(
     files: List[PlainFile],
     k0: bytes,
     Enc: Callable[[bytes, bytes], bytes],
-    block_size: int = 1024,
+    s: int,
     q: Optional[int] = None
 ) -> SetupResult:
     """
@@ -52,8 +61,8 @@ def setup(
         init 阶段定义的群的阶 q。
     """
 
-    if block_size <= 0:
-        raise ValueError("block_size 必须大于 0")
+    if s <= 0:
+        raise ValueError("s 必须大于 0")
 
     if not files:
         raise ValueError("files 不能为空")
@@ -63,9 +72,14 @@ def setup(
     # =====================
 
     n = len(files)
+    file_blocks: Dict[str, List[bytes]] = {}
+    original_block_counts: Dict[str, int] = {}
 
-    # Use a unified block count s. Existing short blocks are padded below.
-    s = max(len(file.blocks) for file in files)
+    for file in files:
+        file_data = b"".join(file.blocks)
+        blocks = split_file_by_s(file_data, s)
+        file_blocks[file.file_id] = blocks
+        original_block_counts[file.file_id] = sum(1 for block in blocks if block)
 
     # =====================
     # 2. 加密每个文件块，生成 C
@@ -75,16 +89,11 @@ def setup(
 
     for file in files:
         encrypted_blocks: List[EncryptedBlock] = []
-        original_block_count = len(file.blocks)
+        blocks = file_blocks[file.file_id]
+        original_block_count = original_block_counts[file.file_id]
 
-        for j in range(1, s + 1):
-            if j <= original_block_count:
-                plain_block = normalize_block(file.blocks[j - 1], block_size)
-                is_padding = False
-            else:
-                # 短文件补齐到统一块数 s
-                plain_block = b"\x00" * block_size
-                is_padding = True
+        for j, plain_block in enumerate(blocks, start=1):
+            is_padding = j > original_block_count
 
             ciphertext = Enc(k0, plain_block)
             cij_int = bytes_to_int_mod_q(ciphertext, q)
@@ -158,7 +167,6 @@ def setup(
         V=V,
         n=n,
         s=s,
-        block_size=block_size,
         file_table=file_table,
         id_table=id_table
     )

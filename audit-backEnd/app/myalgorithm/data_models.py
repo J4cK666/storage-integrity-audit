@@ -41,7 +41,6 @@ class KeywordTag:
     """
 
     keyword: str                                  # 明文关键词，用户端保存
-    block_count: int                             # 每个文件的分块数 s
     file_ids: List[str] = field(default_factory=list)  # 包含该关键词的文件ID集合 Swk
     ral: List[GroupElement] = field(default_factory=list)  # RAL: [Vwk,1, ..., Vwk,s]
 
@@ -66,7 +65,6 @@ class PlainFile:
     blocks: List[bytes]
     keywords: List[str]
     size: int
-    block_count: int
 
     """
     明文文件对象，对应论文中的 Fi
@@ -131,7 +129,6 @@ class SetupResult:
     V: Dict[str, List[int]]
     n: int
     s: int
-    block_size: int
     file_table: Dict[int, str]
     id_table: Dict[int, str]
 

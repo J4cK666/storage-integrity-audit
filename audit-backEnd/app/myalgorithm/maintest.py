@@ -37,13 +37,12 @@ def main():
         "f3.txt": ["third", "world"]
     }
 
-    block_size = 1024
+    s = 10
 
     files = read_files(
         # folder_path = "/home/jgj/MyRepository/storage-integrity-audit/testfiles",
         folder_path_test = "../../../testfiles",
         keyword_input=keyword_input,
-        block_size=block_size
     )
 
     # =====================
@@ -53,7 +52,7 @@ def main():
         files=files,
         k0=PP["k0"],
         Enc=PP["Enc"],
-        block_size=block_size
+        s=s,
     )
 
     print("n =", setup_result.n)

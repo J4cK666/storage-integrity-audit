@@ -290,7 +290,6 @@ def _metadata_from_setup_result(setup_result: SetupResult) -> Dict[str, Any]:
     return {
         "n": setup_result.n,
         "s": setup_result.s,
-        "block_size": setup_result.block_size,
         "file_table": file_table,
     }
 
@@ -435,7 +434,6 @@ def _setup_result_from_cloud_payload(
         V={},
         n=int(metadata["n"]),
         s=int(metadata["s"]),
-        block_size=int(metadata["block_size"]),
         file_table=file_table,
         id_table=file_table.copy(),
     )

@@ -43,23 +43,12 @@ except ImportError:
 
 
 file_upload_router = APIRouter(prefix="/home", tags=["file-upload"])
-DEFAULT_BLOCK_SIZE = 1024
+DEFAULT_BLOCK_COUNT = 10
 
 
 class UploadResponse(BaseModel):
     message: str
     files: List[FileItem]
-
-
-def _split_bytes(data: bytes, block_size: int) -> List[bytes]:
-    if block_size <= 0:
-        raise ValueError("block_size must be greater than 0")
-    if not data:
-        return [b""]
-    return [
-        data[index:index + block_size]
-        for index in range(0, len(data), block_size)
-    ]
 
 
 def _algorithm_functions():
@@ -80,12 +69,15 @@ async def upload_files(
     files: List[UploadFile] = File(...),
     keywords: List[str] = Form(...),
     user_id: str = Form(DEFAULT_USER_ID),
+    s: int = Form(DEFAULT_BLOCK_COUNT),
 ) -> UploadResponse:
     init_audit_table()
     cloud_files_dir = get_user_cloud_files_dir(user_id)
 
     if not files:
         raise HTTPException(status_code=400, detail="at_least_one_file_required")
+    if s <= 0:
+        raise HTTPException(status_code=400, detail="s_must_be_greater_than_0")
 
     keyword_forms = prepare_keyword_forms(files, keywords)
     pp = load_user_runtime_pp(user_id)
@@ -104,17 +96,15 @@ async def upload_files(
 
         content = await upload_file.read()
         file_id = make_file_id(file_name, content, user_id)
-        blocks = _split_bytes(content, DEFAULT_BLOCK_SIZE)
 
         plain_files.append(
             PlainFile(
                 file_id=file_id,
                 file_name=file_name,
                 file_path="",
-                blocks=blocks,
+                blocks=[content],
                 keywords=parsed_keywords,
                 size=len(content),
-                block_count=len(blocks),
             )
         )
         uploaded_files.append(
@@ -135,7 +125,7 @@ async def upload_files(
             files=plain_files,
             k0=pp["k0"],
             Enc=pp["Enc"],
-            block_size=DEFAULT_BLOCK_SIZE,
+            s=s,
         )
         secure_index = index_gen(setup_result)
         auth_set = auth_gen(setup_result)
