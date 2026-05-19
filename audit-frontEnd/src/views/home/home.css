@@ -581,6 +581,15 @@ td {
     background: rgba(46, 143, 220, 0.18);
 }
 
+.danger-mini-button {
+    color: #ffffff;
+    background: var(--danger);
+}
+
+.danger-mini-button:hover {
+    background: #bd3636;
+}
+
 .mini-button:disabled {
     cursor: wait;
     opacity: 0.66;

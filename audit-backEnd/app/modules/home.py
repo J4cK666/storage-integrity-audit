@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import mimetypes
+import json
 from pathlib import Path
-from typing import List
+from typing import Dict, List
 from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException
@@ -17,10 +18,16 @@ try:
         FileItem,
         calculate_integrity_ratio,
         connect,
+        get_user_cloud_files_dir,
         init_audit_table,
         list_files,
     )
-    from ..tools.save_to_cloud import load_encrypted_file
+    from ..tools.save_to_cloud import (
+        load_encrypted_file,
+        load_from_cloud,
+        save_authenticator_set,
+        save_secure_index,
+    )
     from ..tools.user_info import load_user_runtime_pp
     from .user_security import get_user_by_account_id, make_password_hash, verify_password
 except ImportError:
@@ -31,10 +38,16 @@ except ImportError:
         FileItem,
         calculate_integrity_ratio,
         connect,
+        get_user_cloud_files_dir,
         init_audit_table,
         list_files,
     )
-    from tools.save_to_cloud import load_encrypted_file
+    from tools.save_to_cloud import (
+        load_encrypted_file,
+        load_from_cloud,
+        save_authenticator_set,
+        save_secure_index,
+    )
     from tools.user_info import load_user_runtime_pp
     from modules.user_security import get_user_by_account_id, make_password_hash, verify_password
 
@@ -64,6 +77,40 @@ class ChangePasswordRequest(BaseModel):
     user_id: str = Field(..., min_length=1)
     old_password: str = Field(..., min_length=1, max_length=128)
     new_password: str = Field(..., min_length=1, max_length=128)
+
+
+def _delete_algorithm_functions():
+    try:
+        from ..myalgorithm.expansion.deleteFile import (
+            delete_encrypted_file_from_cloud,
+            delete_file_database_record,
+            delete_file_from_package,
+        )
+    except ImportError:
+        from myalgorithm.expansion.deleteFile import (
+            delete_encrypted_file_from_cloud,
+            delete_file_database_record,
+            delete_file_from_package,
+        )
+
+    return delete_file_from_package, delete_encrypted_file_from_cloud, delete_file_database_record
+
+
+def _existing_file_keywords(user_id: str) -> Dict[str, List[str]]:
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT file_id, keywords
+            FROM audit_files
+            WHERE user_id = ?
+            """,
+            (user_id,),
+        ).fetchall()
+
+    return {
+        row["file_id"]: json.loads(row["keywords"])
+        for row in rows
+    }
 
 
 @home_router.get("/dashboard", response_model=DashboardResponse)
@@ -154,6 +201,77 @@ def get_plain_file(
             )
         },
     )
+
+
+@home_router.delete("/files/{file_id}", response_model=ApiMessage)
+def delete_file(
+    file_id: str,
+    user_id: str = DEFAULT_USER_ID,
+) -> ApiMessage:
+    init_audit_table()
+
+    with connect() as connection:
+        row = connection.execute(
+            """
+            SELECT file_id
+            FROM audit_files
+            WHERE user_id = ? AND file_id = ?
+            """,
+            (user_id, file_id),
+        ).fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="file_not_found")
+
+    pp = load_user_runtime_pp(user_id)
+    if pp is None:
+        raise HTTPException(status_code=404, detail="user_crypto_keys_not_found")
+
+    cloud_dir = get_user_cloud_files_dir(user_id)
+    file_keywords = _existing_file_keywords(user_id)
+
+    try:
+        (
+            delete_file_from_package,
+            delete_encrypted_file_from_cloud,
+            delete_file_database_record,
+        ) = _delete_algorithm_functions()
+        cloud_package = load_from_cloud(user_id, cloud_dir, group=pp["group"])
+        delete_result = delete_file_from_package(
+            setup_result=cloud_package.setup_result,
+            secure_index=cloud_package.secure_index,
+            auth_set=cloud_package.auth_set,
+            file_keywords=file_keywords,
+            file_id=file_id,
+        )
+        save_authenticator_set(
+            delete_result.auth_set,
+            user_id=user_id,
+            cloud_dir=cloud_dir,
+            group=pp["group"],
+        )
+        save_secure_index(
+            delete_result.secure_index,
+            delete_result.setup_result,
+            user_id=user_id,
+            cloud_dir=cloud_dir,
+            group=pp["group"],
+        )
+        delete_encrypted_file_from_cloud(cloud_dir=cloud_dir, file_id=file_id)
+        with connect() as connection:
+            delete_file_database_record(
+                connection=connection,
+                user_id=user_id,
+                file_id=file_id,
+            )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=400, detail=f"cloud_file_missing: {exc}") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"delete_file_failed: {exc}") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"delete_file_failed: {exc}") from exc
+
+    return ApiMessage(message="delete_success")
 
 
 @home_router.get("/profile", response_model=UserProfile)

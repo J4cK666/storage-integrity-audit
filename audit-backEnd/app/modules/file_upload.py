@@ -22,7 +22,13 @@ try:
         prepare_keyword_forms,
     )
     from ..myalgorithm.data_models import PlainFile
-    from ..tools.save_to_cloud import load_from_cloud, save_to_cloud
+    from ..tools.save_to_cloud import (
+        load_from_cloud,
+        save_authenticator_set,
+        save_encrypted_file,
+        save_secure_index,
+        save_to_cloud,
+    )
     from ..tools.user_info import load_user_runtime_pp
 except ImportError:
     from modules.home_shared import (
@@ -38,7 +44,13 @@ except ImportError:
         prepare_keyword_forms,
     )
     from myalgorithm.data_models import PlainFile
-    from tools.save_to_cloud import load_from_cloud, save_to_cloud
+    from tools.save_to_cloud import (
+        load_from_cloud,
+        save_authenticator_set,
+        save_encrypted_file,
+        save_secure_index,
+        save_to_cloud,
+    )
     from tools.user_info import load_user_runtime_pp
 
 
@@ -304,11 +316,23 @@ async def append_files(
             k0=pp["k0"],
             Enc=pp["Enc"],
         )
-        setup_result = append_results[-1].setup_result
-        save_result = save_to_cloud(
-            setup_result=setup_result,
-            secure_index=append_results[-1].secure_index,
-            auth_set=append_results[-1].auth_set,
+        final_result = append_results[-1]
+        encrypted_paths = {
+            result.encrypted_file.file_id: save_encrypted_file(
+                result.encrypted_file,
+                cloud_files_dir,
+            )
+            for result in append_results
+        }
+        save_authenticator_set(
+            final_result.auth_set,
+            user_id=user_id,
+            cloud_dir=cloud_files_dir,
+            group=pp["group"],
+        )
+        save_secure_index(
+            final_result.secure_index,
+            final_result.setup_result,
             user_id=user_id,
             cloud_dir=cloud_files_dir,
             group=pp["group"],
@@ -324,7 +348,7 @@ async def append_files(
         plain_files=plain_files,
         user_id=user_id,
         upload_time=upload_time,
-        encrypted_paths=save_result.encrypted_files,
+        encrypted_paths=encrypted_paths,
     )
 
     return UploadResponse(message="append_success", files=uploaded_files)

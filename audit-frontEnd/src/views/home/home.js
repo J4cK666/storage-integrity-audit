@@ -77,6 +77,7 @@ function makeFileActions(file) {
         <div class="file-actions">
             <button class="mini-button" type="button" data-file-action="preview" data-file-id="${fileId}" data-file-name="${fileName}">预览</button>
             <button class="mini-button" type="button" data-file-action="download" data-file-id="${fileId}" data-file-name="${fileName}">下载</button>
+            <button class="mini-button danger-mini-button" type="button" data-file-action="delete" data-file-id="${fileId}" data-file-name="${fileName}">删除</button>
         </div>
     `;
 }
@@ -111,13 +112,13 @@ function statusClass(status) {
     return "status-pending";
 }
 
-async function apiJson(path) {
+async function apiJson(path, options = {}) {
     const appApiJson = getAuditApp().apiJson;
     if (appApiJson) {
-        return appApiJson(path);
+        return appApiJson(path, options);
     }
 
-    const response = await fetch(`${API_BASE_URL_FALLBACK}${path}`);
+    const response = await fetch(`${API_BASE_URL_FALLBACK}${path}`, options);
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
         throw new Error(typeof data.detail === "string" ? data.detail : "请求失败");
@@ -185,6 +186,17 @@ async function downloadPlainFile(fileId, fileName) {
     await writable.close();
 }
 
+async function deleteFile(fileId) {
+    const currentUserId = readUserId();
+    if (!currentUserId) {
+        throw new Error("请先登录");
+    }
+
+    await apiJson(`/home/files/${encodeURIComponent(fileId)}?user_id=${encodeURIComponent(currentUserId)}`, {
+        method: "DELETE"
+    });
+}
+
 function bindFileActions() {
     const fileTableBody = document.getElementById("fileTableBody");
     fileTableBody?.addEventListener("click", async (event) => {
@@ -196,6 +208,26 @@ function bindFileActions() {
         const { fileAction, fileId, fileName } = button.dataset;
         if (fileAction === "preview") {
             window.open(plainFileUrl(fileId, "inline"), "_blank", "noopener");
+            return;
+        }
+
+        if (fileAction === "delete") {
+            const confirmed = window.confirm(`确认删除文件“${fileName}”吗？`);
+            if (!confirmed) {
+                return;
+            }
+
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = "删除中...";
+            try {
+                await deleteFile(fileId);
+                await loadDashboard();
+            } catch (error) {
+                alert(error.message || "删除失败");
+                button.disabled = false;
+                button.textContent = originalText;
+            }
             return;
         }
 
