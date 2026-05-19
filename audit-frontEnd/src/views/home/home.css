@@ -461,6 +461,14 @@ button {
     margin-bottom: 12px;
 }
 
+.panel-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 .soft-button,
 .primary-button,
 .danger-button {
@@ -997,6 +1005,16 @@ td {
     .pending-item,
     .audit-input-row {
         grid-template-columns: 1fr;
+    }
+
+    .panel-head {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .panel-actions {
+        width: 100%;
+        justify-content: flex-start;
     }
 
     .panel {

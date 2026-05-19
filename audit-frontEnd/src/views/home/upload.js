@@ -81,12 +81,14 @@
         renderPendingFiles();
     }
 
-    async function savePendingFiles(event) {
+    async function submitPendingFiles(event, options) {
         event.preventDefault();
         collectPendingKeywords();
 
         const pendingList = document.getElementById("pendingList");
         const saveUploads = document.getElementById("saveUploads");
+        const appendUploads = document.getElementById("appendUploads");
+        const actionButton = options.buttonId ? document.getElementById(options.buttonId) : saveUploads;
         const { apiForm } = getAuditApp();
         const userId = getUserId();
 
@@ -114,25 +116,48 @@
         });
 
         saveUploads.disabled = true;
-        saveUploads.textContent = "上传中...";
+        appendUploads.disabled = true;
+        actionButton.textContent = options.busyText;
 
         try {
-            const result = await apiForm("/home/files/upload", formData);
+            const result = await apiForm(options.path, formData);
             const uploadedFiles = result.files || [];
             state.pendingFiles = [];
             renderPendingFiles();
             pendingList.innerHTML = `
                 <div class="empty-row">
-                    上传成功，已保存 ${uploadedFiles.length} 个文件。可继续选择文件上传，或前往首页查看文件列表。
+                    ${options.successText(uploadedFiles.length)}
                 </div>
             `;
-            window.alert(`上传成功，已保存 ${uploadedFiles.length} 个文件。`);
+            window.alert(options.alertText(uploadedFiles.length));
         } catch (error) {
             pendingList.innerHTML = `<div class="empty-row">${escapeHtml(error.message)}</div>`;
         } finally {
             saveUploads.disabled = false;
+            appendUploads.disabled = false;
             saveUploads.textContent = "保存到文件列表";
+            appendUploads.textContent = "新增文件";
         }
+    }
+
+    function savePendingFiles(event) {
+        return submitPendingFiles(event, {
+            path: "/home/files/upload",
+            buttonId: "saveUploads",
+            busyText: "上传中...",
+            successText: (count) => `上传成功，已保存 ${count} 个文件。可继续选择文件上传，或前往首页查看文件列表。`,
+            alertText: (count) => `上传成功，已保存 ${count} 个文件。`
+        });
+    }
+
+    function appendPendingFiles(event) {
+        return submitPendingFiles(event, {
+            path: "/home/files/append",
+            buttonId: "appendUploads",
+            busyText: "新增中...",
+            successText: (count) => `新增成功，已追加 ${count} 个文件并更新安全索引、RAL 与验证器。`,
+            alertText: (count) => `新增成功，已追加 ${count} 个文件。`
+        });
     }
 
     function handleFileChange(event) {
@@ -160,6 +185,7 @@
         const fileInput = document.getElementById("fileInput");
         const pendingList = document.getElementById("pendingList");
         const saveUploads = document.getElementById("saveUploads");
+        const appendUploads = document.getElementById("appendUploads");
 
         if (setupShell) {
             setupShell("upload");
@@ -176,6 +202,7 @@
             removePendingFile(Number(removeButton.dataset.removeIndex));
         });
         saveUploads?.addEventListener("click", savePendingFiles);
+        appendUploads?.addEventListener("click", appendPendingFiles);
     }
 
     document.addEventListener("DOMContentLoaded", boot);
