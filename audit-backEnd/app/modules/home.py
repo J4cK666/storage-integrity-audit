@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, List
 from urllib.parse import quote
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
@@ -16,15 +16,20 @@ try:
         DEFAULT_USER_ID,
         DashboardResponse,
         FileItem,
+        PENDING_STATUS,
         calculate_integrity_ratio,
         connect,
         get_user_cloud_files_dir,
         init_audit_table,
         list_files,
+        now_text,
+        parse_keywords,
     )
+    from ..myalgorithm.data_models import PlainFile
     from ..tools.save_to_cloud import (
         load_encrypted_file,
         load_from_cloud,
+        save_encrypted_file,
         save_authenticator_set,
         save_secure_index,
     )
@@ -36,15 +41,20 @@ except ImportError:
         DEFAULT_USER_ID,
         DashboardResponse,
         FileItem,
+        PENDING_STATUS,
         calculate_integrity_ratio,
         connect,
         get_user_cloud_files_dir,
         init_audit_table,
         list_files,
+        now_text,
+        parse_keywords,
     )
+    from myalgorithm.data_models import PlainFile
     from tools.save_to_cloud import (
         load_encrypted_file,
         load_from_cloud,
+        save_encrypted_file,
         save_authenticator_set,
         save_secure_index,
     )
@@ -94,6 +104,15 @@ def _delete_algorithm_functions():
         )
 
     return delete_file_from_package, delete_encrypted_file_from_cloud, delete_file_database_record
+
+
+def _update_algorithm_functions():
+    try:
+        from ..myalgorithm.expansion.updateFile import update_file_in_package
+    except ImportError:
+        from myalgorithm.expansion.updateFile import update_file_in_package
+
+    return update_file_in_package
 
 
 def _existing_file_keywords(user_id: str) -> Dict[str, List[str]]:
@@ -272,6 +291,124 @@ def delete_file(
         raise HTTPException(status_code=500, detail=f"delete_file_failed: {exc}") from exc
 
     return ApiMessage(message="delete_success")
+
+
+@home_router.post("/files/{file_id}/update", response_model=FileItem)
+async def update_file(
+    file_id: str,
+    file: UploadFile = File(...),
+    keywords: str = Form(...),
+    user_id: str = Form(DEFAULT_USER_ID),
+) -> FileItem:
+    init_audit_table()
+
+    parsed_keywords = parse_keywords(keywords)
+    if not parsed_keywords:
+        raise HTTPException(status_code=400, detail="missing_keywords")
+
+    file_name = Path(file.filename or "upload.bin").name
+    content = await file.read()
+    upload_time = now_text()
+
+    with connect() as connection:
+        row = connection.execute(
+            """
+            SELECT file_id
+            FROM audit_files
+            WHERE user_id = ? AND file_id = ?
+            """,
+            (user_id, file_id),
+        ).fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="file_not_found")
+
+    pp = load_user_runtime_pp(user_id)
+    if pp is None:
+        raise HTTPException(status_code=404, detail="user_crypto_keys_not_found")
+
+    plain_file = PlainFile(
+        file_id=file_id,
+        file_name=file_name,
+        file_path="",
+        blocks=[content],
+        keywords=parsed_keywords,
+        size=len(content),
+    )
+    cloud_dir = get_user_cloud_files_dir(user_id)
+    file_keywords = _existing_file_keywords(user_id)
+
+    try:
+        update_file_in_package = _update_algorithm_functions()
+        cloud_package = load_from_cloud(user_id, cloud_dir, group=pp["group"])
+        update_result = update_file_in_package(
+            setup_result=cloud_package.setup_result,
+            secure_index=cloud_package.secure_index,
+            auth_set=cloud_package.auth_set,
+            file_keywords=file_keywords,
+            plain_file=plain_file,
+            k0=pp["k0"],
+            Enc=pp["Enc"],
+        )
+        encrypted_path = save_encrypted_file(
+            update_result.encrypted_file,
+            cloud_dir,
+        )
+        save_authenticator_set(
+            update_result.auth_set,
+            user_id=user_id,
+            cloud_dir=cloud_dir,
+            group=pp["group"],
+        )
+        save_secure_index(
+            update_result.secure_index,
+            update_result.setup_result,
+            user_id=user_id,
+            cloud_dir=cloud_dir,
+            group=pp["group"],
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=400, detail=f"cloud_file_missing: {exc}") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"update_file_failed: {exc}") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"update_file_failed: {exc}") from exc
+
+    with connect() as connection:
+        connection.execute(
+            """
+            UPDATE audit_files
+            SET file_name = ?,
+                storage_path = ?,
+                file_size = ?,
+                upload_time = ?,
+                keywords = ?,
+                audit_status = ?,
+                last_audit_time = ?
+            WHERE user_id = ? AND file_id = ?
+            """,
+            (
+                plain_file.file_name,
+                str(encrypted_path),
+                plain_file.size,
+                upload_time,
+                json.dumps(plain_file.keywords, ensure_ascii=False),
+                PENDING_STATUS,
+                None,
+                user_id,
+                file_id,
+            ),
+        )
+
+    return FileItem(
+        file_id=file_id,
+        file_name=plain_file.file_name,
+        file_size=plain_file.size,
+        upload_time=upload_time,
+        keywords=plain_file.keywords,
+        audit_status=PENDING_STATUS,
+        last_audit_time=None,
+    )
 
 
 @home_router.get("/profile", response_model=UserProfile)

@@ -1,4 +1,8 @@
 const API_BASE_URL_FALLBACK = window.AUDIT_CONFIG.API_BASE_URL;
+const dashboardState = {
+    files: [],
+    selectedUpdateFileId: ""
+};
 
 function getAuditApp() {
     return window.AuditApp || {};
@@ -126,6 +130,21 @@ async function apiJson(path, options = {}) {
     return data;
 }
 
+async function apiForm(path, formData) {
+    const response = await fetch(`${API_BASE_URL_FALLBACK}${path}`, {
+        method: "POST",
+        body: formData
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        if (typeof data.detail === "string") {
+            throw new Error(data.detail);
+        }
+        throw new Error("请求失败");
+    }
+    return data;
+}
+
 function renderSummary(dashboard) {
     document.getElementById("fileCount").textContent = dashboard.user_file_count;
     document.getElementById("integrityRatio").textContent = `${dashboard.integrity_ratio}%`;
@@ -135,6 +154,7 @@ function renderSummary(dashboard) {
 
 function renderFiles(files) {
     const fileTableBody = document.getElementById("fileTableBody");
+    dashboardState.files = files;
 
     if (!files.length) {
         fileTableBody.innerHTML = `<tr class="empty-row"><td colspan="7">暂无文件</td></tr>`;
@@ -197,6 +217,151 @@ async function deleteFile(fileId) {
     });
 }
 
+function currentUpdateFile() {
+    return dashboardState.files.find((file) => file.file_id === dashboardState.selectedUpdateFileId) || null;
+}
+
+function renderUpdateFileChoices() {
+    const updateFileList = document.getElementById("updateFileList");
+    if (!updateFileList) {
+        return;
+    }
+
+    const availableFiles = dashboardState.files.filter((file) => file.audit_status !== "missing");
+    if (!availableFiles.length) {
+        updateFileList.innerHTML = `<div class="empty-row">暂无可更新文件</div>`;
+        return;
+    }
+
+    updateFileList.innerHTML = availableFiles.map((file) => `
+        <label class="update-file-choice">
+            <input type="radio" name="updateFileChoice" value="${escapeHtml(file.file_id)}" ${file.file_id === dashboardState.selectedUpdateFileId ? "checked" : ""}>
+            <div>
+                <strong>${escapeHtml(file.file_name)}</strong>
+                <span>${escapeHtml(file.file_id)}</span>
+            </div>
+            <span>${formatSize(file.file_size)}</span>
+        </label>
+    `).join("");
+}
+
+function showUpdateStep(stepName) {
+    const selectStep = document.getElementById("updateSelectStep");
+    const uploadStep = document.getElementById("updateUploadStep");
+    selectStep?.classList.toggle("active", stepName === "select");
+    uploadStep?.classList.toggle("active", stepName === "upload");
+}
+
+function resetUpdateUploadForm() {
+    const updateFileInput = document.getElementById("updateFileInput");
+    const updateFileInputName = document.getElementById("updateFileInputName");
+    const updateUploadMessage = document.getElementById("updateUploadMessage");
+    if (updateFileInput) {
+        updateFileInput.value = "";
+    }
+    if (updateFileInputName) {
+        updateFileInputName.textContent = "上传后将保留原文件 ID 和编号";
+    }
+    if (updateUploadMessage) {
+        updateUploadMessage.textContent = "";
+    }
+}
+
+function openUpdateModal() {
+    const modal = document.getElementById("updateFileModal");
+    const selectMessage = document.getElementById("updateSelectMessage");
+    dashboardState.selectedUpdateFileId = "";
+    if (selectMessage) {
+        selectMessage.textContent = "";
+    }
+    resetUpdateUploadForm();
+    renderUpdateFileChoices();
+    showUpdateStep("select");
+    modal?.classList.add("open");
+    modal?.setAttribute("aria-hidden", "false");
+}
+
+function closeUpdateModal() {
+    const modal = document.getElementById("updateFileModal");
+    modal?.classList.remove("open");
+    modal?.setAttribute("aria-hidden", "true");
+}
+
+function goToUpdateUploadStep() {
+    const selectMessage = document.getElementById("updateSelectMessage");
+    const selectedFile = currentUpdateFile();
+    if (!selectedFile) {
+        if (selectMessage) {
+            selectMessage.textContent = "请先选择一个文件";
+        }
+        return;
+    }
+
+    const selectedUpdateFile = document.getElementById("selectedUpdateFile");
+    const updateKeywordsInput = document.getElementById("updateKeywordsInput");
+    if (selectedUpdateFile) {
+        selectedUpdateFile.innerHTML = `
+            <strong>${escapeHtml(selectedFile.file_name)}</strong>
+            <span>${escapeHtml(selectedFile.file_id)}</span>
+        `;
+    }
+    if (updateKeywordsInput) {
+        updateKeywordsInput.value = (selectedFile.keywords || []).join(", ");
+    }
+    resetUpdateUploadForm();
+    showUpdateStep("upload");
+}
+
+async function submitUpdateFile(event) {
+    event.preventDefault();
+
+    const selectedFile = currentUpdateFile();
+    const updateFileInput = document.getElementById("updateFileInput");
+    const updateKeywordsInput = document.getElementById("updateKeywordsInput");
+    const updateUploadMessage = document.getElementById("updateUploadMessage");
+    const submitButton = document.getElementById("submitUpdateFile");
+    const currentUserId = readUserId();
+
+    if (!selectedFile) {
+        updateUploadMessage.textContent = "请先选择一个文件";
+        showUpdateStep("select");
+        return;
+    }
+    if (!updateFileInput?.files?.length) {
+        updateUploadMessage.textContent = "请选择替换文件";
+        return;
+    }
+    if (!updateKeywordsInput.value.trim()) {
+        updateUploadMessage.textContent = "请填写关键词";
+        return;
+    }
+    if (!currentUserId) {
+        updateUploadMessage.textContent = "请先登录";
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("user_id", currentUserId);
+    formData.append("file", updateFileInput.files[0]);
+    formData.append("keywords", updateKeywordsInput.value);
+
+    const originalText = submitButton.textContent;
+    submitButton.disabled = true;
+    submitButton.textContent = "更新中...";
+    updateUploadMessage.textContent = "";
+    try {
+        await apiForm(`/home/files/${encodeURIComponent(selectedFile.file_id)}/update`, formData);
+        closeUpdateModal();
+        await loadDashboard();
+        window.alert("文件更新成功");
+    } catch (error) {
+        updateUploadMessage.textContent = error.message || "更新失败";
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = originalText;
+    }
+}
+
 function bindFileActions() {
     const fileTableBody = document.getElementById("fileTableBody");
     fileTableBody?.addEventListener("click", async (event) => {
@@ -251,6 +416,52 @@ function bindFileActions() {
     });
 }
 
+function bindUpdateModal() {
+    const modal = document.getElementById("updateFileModal");
+    const openButton = document.getElementById("openUpdateFileModal");
+    const closeButton = document.getElementById("closeUpdateFileModal");
+    const cancelButton = document.getElementById("cancelUpdateFile");
+    const nextButton = document.getElementById("nextUpdateFile");
+    const backButton = document.getElementById("backUpdateFile");
+    const updateFileList = document.getElementById("updateFileList");
+    const updateUploadStep = document.getElementById("updateUploadStep");
+    const updateFileInput = document.getElementById("updateFileInput");
+    const updateFileInputName = document.getElementById("updateFileInputName");
+
+    openButton?.addEventListener("click", openUpdateModal);
+    closeButton?.addEventListener("click", closeUpdateModal);
+    cancelButton?.addEventListener("click", closeUpdateModal);
+    nextButton?.addEventListener("click", goToUpdateUploadStep);
+    backButton?.addEventListener("click", () => showUpdateStep("select"));
+    updateUploadStep?.addEventListener("submit", submitUpdateFile);
+
+    modal?.addEventListener("click", (event) => {
+        if (event.target === modal) {
+            closeUpdateModal();
+        }
+    });
+
+    updateFileList?.addEventListener("change", (event) => {
+        const input = event.target.closest("input[name='updateFileChoice']");
+        if (input) {
+            dashboardState.selectedUpdateFileId = input.value;
+            const selectMessage = document.getElementById("updateSelectMessage");
+            if (selectMessage) {
+                selectMessage.textContent = "";
+            }
+        }
+    });
+
+    updateFileInput?.addEventListener("change", () => {
+        const selectedFile = updateFileInput.files?.[0];
+        if (updateFileInputName) {
+            updateFileInputName.textContent = selectedFile
+                ? `${selectedFile.name} · ${formatSize(selectedFile.size)}`
+                : "上传后将保留原文件 ID 和编号";
+        }
+    });
+}
+
 async function loadDashboard() {
     const currentUserId = readUserId();
     if (!currentUserId) {
@@ -265,6 +476,7 @@ async function loadDashboard() {
 async function boot() {
     getAuditApp().setupShell?.("dashboard");
     bindFileActions();
+    bindUpdateModal();
 
     try {
         await loadDashboard();

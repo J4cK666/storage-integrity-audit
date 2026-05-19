@@ -96,7 +96,10 @@
                                 <p class="panel-kicker">File Table</p>
                                 <h2>文件列表</h2>
                             </div>
-                            <a class="soft-button" href="./upload.html">新增文件</a>
+                            <div class="panel-actions">
+                                <button class="soft-button" id="openUpdateFileModal" type="button">更新文件</button>
+                                <a class="soft-button" href="./upload.html">新增文件</a>
+                            </div>
                         </div>
                         <div class="table-wrap">
                             <table>
@@ -149,6 +152,44 @@
                 </div>
             </section>
         </main>
+    </div>
+    <div class="modal-backdrop" id="updateFileModal" aria-hidden="true">
+        <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="updateFileTitle">
+            <div class="modal-head">
+                <div>
+                    <p class="panel-kicker">Update</p>
+                    <h2 id="updateFileTitle">更新文件</h2>
+                </div>
+                <button class="modal-close" id="closeUpdateFileModal" type="button" aria-label="关闭">×</button>
+            </div>
+
+            <div class="modal-step active" id="updateSelectStep">
+                <div class="update-file-list" id="updateFileList"></div>
+                <p class="form-message" id="updateSelectMessage"></p>
+                <div class="modal-actions">
+                    <button class="soft-button" id="cancelUpdateFile" type="button">取消</button>
+                    <button class="primary-button" id="nextUpdateFile" type="button">下一步</button>
+                </div>
+            </div>
+
+            <form class="modal-step" id="updateUploadStep">
+                <div class="selected-update-file" id="selectedUpdateFile"></div>
+                <label class="upload-drop update-upload-drop" for="updateFileInput">
+                    <input id="updateFileInput" type="file">
+                    <span>选择替换文件</span>
+                    <strong id="updateFileInputName">上传后将保留原文件 ID 和编号</strong>
+                </label>
+                <label class="update-keyword-field">
+                    <span>关键词</span>
+                    <input id="updateKeywordsInput" type="text" placeholder="多个关键词用逗号分隔">
+                </label>
+                <p class="form-message" id="updateUploadMessage"></p>
+                <div class="modal-actions">
+                    <button class="soft-button" id="backUpdateFile" type="button">上一步</button>
+                    <button class="primary-button" id="submitUpdateFile" type="submit">提交更新</button>
+                </div>
+            </form>
+        </section>
     </div>
 </body>
 </html>
