@@ -1012,6 +1012,154 @@ td {
     line-height: 1;
 }
 
+.audit-process-card {
+    width: min(980px, 100%);
+}
+
+.audit-process-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.audit-process-section {
+    padding: 16px;
+    border: 1px solid rgba(46, 143, 220, 0.12);
+    border-radius: 8px;
+    background: #fbfdff;
+}
+
+.audit-process-section h3 {
+    margin: 0 0 14px;
+    font-size: 17px;
+}
+
+.audit-flow {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.audit-flow-step {
+    min-height: 92px;
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(46, 143, 220, 0.12);
+    background: #ffffff;
+    opacity: 0.62;
+    transition: opacity 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.audit-flow-step span {
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: rgba(46, 143, 220, 0.1);
+    color: var(--brand-deep);
+    font-weight: 800;
+}
+
+.audit-flow-step strong,
+.audit-flow-step p {
+    display: block;
+}
+
+.audit-flow-step p {
+    margin: 5px 0 0;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.audit-flow-step.active,
+.audit-flow-step.done {
+    opacity: 1;
+    border-color: rgba(46, 143, 220, 0.34);
+    background: #f4fbff;
+}
+
+.audit-flow-step.done span {
+    color: #ffffff;
+    background: var(--success);
+}
+
+.audit-progress-copy {
+    margin-bottom: 10px;
+    color: var(--text-main);
+    font-weight: 800;
+}
+
+.audit-progress-track {
+    height: 14px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(46, 143, 220, 0.12);
+}
+
+.audit-progress-fill {
+    width: 0%;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(135deg, #278ee0, #57aee7);
+    transition: width 0.08s linear;
+}
+
+.audit-process-note {
+    margin: 10px 0 0;
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.audit-equation {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 54px minmax(0, 1fr);
+    align-items: stretch;
+    gap: 12px;
+}
+
+.audit-equation div {
+    min-height: 118px;
+    display: grid;
+    gap: 8px;
+    align-content: start;
+    padding: 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(46, 143, 220, 0.12);
+    background: #ffffff;
+}
+
+.audit-equation span {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.audit-equation strong {
+    max-height: 94px;
+    overflow: auto;
+    color: var(--text-main);
+    font-size: 12px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.audit-equation b {
+    min-height: 118px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: rgba(46, 143, 220, 0.1);
+    color: var(--brand-deep);
+    font-size: 28px;
+}
+
 .modal-step {
     display: none;
 }
@@ -1171,5 +1319,14 @@ td {
     .modal-actions .soft-button,
     .modal-actions .primary-button {
         width: 100%;
+    }
+
+    .audit-flow,
+    .audit-equation {
+        grid-template-columns: 1fr;
+    }
+
+    .audit-equation b {
+        min-height: 48px;
     }
 }

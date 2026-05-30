@@ -6,10 +6,10 @@
     <title>审计工作台 - 文件审计</title>
     <link rel="icon" type="image/png" href="../../assets/logo/logo.png">
     <script src="./shell-preload.js"></script>
-    <link rel="stylesheet" href="./home.css?v=2026051706">
+    <link rel="stylesheet" href="./home.css?v=2026053010">
     <script src="../../config.js?v=2026051713"></script>
     <script src="./common.js?v=2026051713" defer></script>
-    <script src="./audit.js?v=2026051713" defer></script>
+    <script src="./audit.js?v=2026053010" defer></script>
 </head>
 <body>
     <div class="app-shell">
@@ -90,6 +90,59 @@
                 </section>
             </section>
         </main>
+    </div>
+    <div class="modal-backdrop audit-process-modal" id="auditProcessModal" aria-hidden="true">
+        <section class="modal-card audit-process-card" role="dialog" aria-modal="true" aria-labelledby="auditProcessTitle">
+            <div class="modal-head">
+                <div>
+                    <p class="panel-kicker">Audit Process</p>
+                    <h2 id="auditProcessTitle">审计过程演示</h2>
+                </div>
+                <button class="modal-close" id="auditProcessClose" type="button" aria-label="关闭审计过程演示">×</button>
+            </div>
+            <div class="audit-process-grid">
+                <section class="audit-process-section">
+                    <h3>协议交互</h3>
+                    <div class="audit-flow">
+                        <div class="audit-flow-step" data-audit-step="trapdoor">
+                            <span>1</span>
+                            <div><strong>搜索陷门</strong><p>用户 -> TPA</p></div>
+                        </div>
+                        <div class="audit-flow-step" data-audit-step="challenge">
+                            <span>2</span>
+                            <div><strong>审计挑战</strong><p>TPA -> 云端</p></div>
+                        </div>
+                        <div class="audit-flow-step" data-audit-step="proof">
+                            <span>3</span>
+                            <div><strong>审计证明</strong><p>云端 -> TPA</p></div>
+                        </div>
+                    </div>
+                </section>
+                <section class="audit-process-section">
+                    <h3>聚合审计进度</h3>
+                    <div class="audit-progress-copy" id="auditProgressCopy">等待审计开始</div>
+                    <div class="audit-progress-track" aria-label="审计完成进度">
+                        <div class="audit-progress-fill" id="auditProgressFill"></div>
+                    </div>
+                    <p class="audit-process-note">当前系统使用聚合验证器，进度仅按挑战块数模拟展示。</p>
+                </section>
+                <section class="audit-process-section audit-verify-section">
+                    <h3>验证结果</h3>
+                    <div class="audit-equation">
+                        <div>
+                            <span>左侧结果</span>
+                            <strong id="auditProofLeft">--</strong>
+                        </div>
+                        <b id="auditProofSymbol">=</b>
+                        <div>
+                            <span>右侧结果</span>
+                            <strong id="auditProofRight">--</strong>
+                        </div>
+                    </div>
+                    <p class="audit-process-note" id="auditVerifyStatus">等待聚合证明返回</p>
+                </section>
+            </div>
+        </section>
     </div>
     <script>
         (() => {

@@ -115,7 +115,16 @@ const auditKeyword = document.getElementById("auditKeyword");
 const auditBlockCount = document.getElementById("auditBlockCount");
 const auditBlockHint = document.getElementById("auditBlockHint");
 const runAuditButton = document.getElementById("runAuditButton");
+const auditProcessModal = document.getElementById("auditProcessModal");
+const auditProcessClose = document.getElementById("auditProcessClose");
+const auditProgressCopy = document.getElementById("auditProgressCopy");
+const auditProgressFill = document.getElementById("auditProgressFill");
+const auditProofLeft = document.getElementById("auditProofLeft");
+const auditProofRight = document.getElementById("auditProofRight");
+const auditProofSymbol = document.getElementById("auditProofSymbol");
+const auditVerifyStatus = document.getElementById("auditVerifyStatus");
 const LAST_AUDIT_RESULT_KEY = "lastAuditResult";
+let auditProcessTimers = [];
 
 const auditResultTextMap = {
     complete: "完整",
@@ -146,6 +155,131 @@ function showError(message) {
 
 function auditResultText(value) {
     return auditResultTextMap[value] || value || "未知";
+}
+
+function clearAuditProcessTimers() {
+    auditProcessTimers.forEach((timerId) => window.clearTimeout(timerId));
+    auditProcessTimers = [];
+}
+
+function scheduleAuditProcess(callback, delay) {
+    const timerId = window.setTimeout(callback, delay);
+    auditProcessTimers.push(timerId);
+}
+
+function resetAuditProcessModal(challengeBlockCount) {
+    clearAuditProcessTimers();
+    if (!auditProgressCopy || !auditProgressFill || !auditProofLeft || !auditProofRight || !auditProofSymbol || !auditVerifyStatus) {
+        return;
+    }
+
+    document.querySelectorAll("[data-audit-step]").forEach((step) => {
+        step.classList.remove("active", "done");
+    });
+
+    const total = Math.max(1, Number(challengeBlockCount) || 1);
+    auditProgressCopy.textContent = `已审计 0 块，共 ${total} 块`;
+    auditProgressFill.style.width = "0%";
+    auditProofLeft.textContent = "--";
+    auditProofRight.textContent = "--";
+    auditProofSymbol.textContent = "=";
+    auditVerifyStatus.textContent = "等待聚合证明返回";
+}
+
+function openAuditProcessModal(challengeBlockCount) {
+    if (!auditProcessModal) {
+        return;
+    }
+
+    resetAuditProcessModal(challengeBlockCount);
+    auditProcessModal.classList.add("open");
+    auditProcessModal.setAttribute("aria-hidden", "false");
+}
+
+function closeAuditProcessModal() {
+    if (!auditProcessModal) {
+        return;
+    }
+
+    auditProcessModal.classList.remove("open");
+    auditProcessModal.setAttribute("aria-hidden", "true");
+}
+
+function markAuditStep(stepName, state) {
+    const step = document.querySelector(`[data-audit-step="${stepName}"]`);
+    if (!step) {
+        return;
+    }
+
+    step.classList.remove("active", "done");
+    step.classList.add(state);
+}
+
+function playAuditProcessDemo(challengeBlockCount) {
+    if (!auditProgressCopy || !auditProgressFill) {
+        return Promise.resolve();
+    }
+
+    const total = Math.max(1, Number(challengeBlockCount) || 1);
+    const duration = Math.min(2000, Math.max(1000, 900 + total * 180));
+    const startedAt = performance.now();
+
+    scheduleAuditProcess(() => markAuditStep("trapdoor", "active"), 80);
+    scheduleAuditProcess(() => markAuditStep("trapdoor", "done"), 300);
+    scheduleAuditProcess(() => markAuditStep("challenge", "active"), 360);
+    scheduleAuditProcess(() => markAuditStep("challenge", "done"), 620);
+    scheduleAuditProcess(() => markAuditStep("proof", "active"), 700);
+    scheduleAuditProcess(() => markAuditStep("proof", "done"), 960);
+
+    return new Promise((resolve) => {
+        function tick(now) {
+            const elapsed = now - startedAt;
+            const progress = Math.min(1, elapsed / duration);
+            const audited = progress >= 1 ? total : Math.min(total, Math.floor(progress * total));
+
+            auditProgressCopy.textContent = `已审计 ${audited} 块，共 ${total} 块`;
+            auditProgressFill.style.width = `${Math.round(progress * 100)}%`;
+
+            if (progress < 1) {
+                scheduleAuditProcess(() => window.requestAnimationFrame(tick), 80);
+                return;
+            }
+
+            resolve();
+        }
+
+        window.requestAnimationFrame(tick);
+    });
+}
+
+function renderAuditVerification(result) {
+    if (!auditProofLeft || !auditProofRight || !auditProofSymbol || !auditVerifyStatus) {
+        return;
+    }
+
+    const left = String(result?.proof_left || "");
+    const right = String(result?.proof_right || "");
+
+    auditProofLeft.textContent = left || "--";
+    auditProofRight.textContent = right || "--";
+
+    if (!left || !right) {
+        auditProofSymbol.textContent = "--";
+        auditVerifyStatus.textContent = auditResultText(result?.audit_result);
+        return;
+    }
+
+    auditProofSymbol.textContent = left === right ? "=" : "!=";
+    auditVerifyStatus.textContent = `聚合验证结果：${auditResultText(result?.audit_result)}`;
+}
+
+function setupAuditProcessModal() {
+    auditProcessClose?.addEventListener("click", closeAuditProcessModal);
+    auditProcessModal?.addEventListener("click", (event) => {
+        if (event.target === auditProcessModal) {
+            closeAuditProcessModal();
+        }
+    });
 }
 
 async function loadFiles() {
@@ -310,6 +444,8 @@ async function runAudit(event) {
 
     runAuditButton.disabled = true;
     runAuditButton.textContent = "审计中...";
+    openAuditProcessModal(challengeBlockCount);
+    const processDemo = playAuditProcessDemo(challengeBlockCount);
 
     try {
         const result = await apiJson("/home/audit", {
@@ -320,11 +456,14 @@ async function runAudit(event) {
                 challenge_block_count: challengeBlockCount
             })
         });
+        await processDemo;
         await loadFiles();
         saveLastAuditResult(result, keyword);
         renderAuditSummary(result);
         renderAuditRows(result.files || [], keyword, result.audit_duration || "--");
+        renderAuditVerification(result);
     } catch (error) {
+        await processDemo;
         const message = error.message === "Failed to fetch" ? "无法连接后端服务" : error.message;
         const errorResult = {
             challenge_block_count: challengeBlockCount || "--",
@@ -336,6 +475,7 @@ async function runAudit(event) {
         saveLastAuditResult(errorResult, keyword);
         renderAuditSummary(errorResult);
         renderAuditRows([], keyword, "--");
+        renderAuditVerification(errorResult);
         window.alert(message);
     } finally {
         runAuditButton.disabled = false;
@@ -352,6 +492,7 @@ async function boot() {
         }
 
         runAuditButton.addEventListener("click", runAudit);
+        setupAuditProcessModal();
         auditKeyword.addEventListener("keydown", (event) => {
             if (event.key === "Enter") {
                 event.preventDefault();
