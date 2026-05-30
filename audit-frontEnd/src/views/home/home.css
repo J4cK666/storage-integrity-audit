@@ -1109,13 +1109,6 @@ td {
     transition: width 0.08s linear;
 }
 
-.audit-process-note {
-    margin: 10px 0 0;
-    color: var(--text-muted);
-    font-size: 13px;
-    line-height: 1.6;
-}
-
 .audit-equation {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 54px minmax(0, 1fr);
