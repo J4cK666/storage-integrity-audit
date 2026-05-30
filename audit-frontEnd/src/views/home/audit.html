@@ -199,6 +199,99 @@
                 return statusMap[status] || status || "未知";
             }
 
+            function resetAuditProcessDemo(challengeBlockCount) {
+                const modal = document.getElementById("auditProcessModal");
+                const progressCopy = document.getElementById("auditProgressCopy");
+                const progressFill = document.getElementById("auditProgressFill");
+                const proofLeft = document.getElementById("auditProofLeft");
+                const proofRight = document.getElementById("auditProofRight");
+                const proofSymbol = document.getElementById("auditProofSymbol");
+                const verifyStatus = document.getElementById("auditVerifyStatus");
+                const total = Math.max(1, Number(challengeBlockCount) || 1);
+
+                if (!modal || !progressCopy || !progressFill || !proofLeft || !proofRight || !proofSymbol || !verifyStatus) {
+                    return;
+                }
+
+                document.querySelectorAll("[data-audit-step]").forEach((step) => {
+                    step.classList.remove("active", "done");
+                });
+                progressCopy.textContent = `已审计 0 块，共 ${total} 块`;
+                progressFill.style.width = "0%";
+                proofLeft.textContent = "--";
+                proofRight.textContent = "--";
+                proofSymbol.textContent = "=";
+                verifyStatus.textContent = "等待聚合证明返回";
+                modal.classList.add("open");
+                modal.setAttribute("aria-hidden", "false");
+            }
+
+            function setAuditStepState(stepName, state) {
+                const step = document.querySelector(`[data-audit-step="${stepName}"]`);
+                if (!step) {
+                    return;
+                }
+
+                step.classList.remove("active", "done");
+                step.classList.add(state);
+            }
+
+            function playAuditProcessDemo(challengeBlockCount) {
+                const progressCopy = document.getElementById("auditProgressCopy");
+                const progressFill = document.getElementById("auditProgressFill");
+                if (!progressCopy || !progressFill) {
+                    return Promise.resolve();
+                }
+
+                const total = Math.max(1, Number(challengeBlockCount) || 1);
+                const duration = Math.min(2000, Math.max(1000, 900 + total * 180));
+                const startedAt = performance.now();
+
+                window.setTimeout(() => setAuditStepState("trapdoor", "active"), 80);
+                window.setTimeout(() => setAuditStepState("trapdoor", "done"), 300);
+                window.setTimeout(() => setAuditStepState("challenge", "active"), 360);
+                window.setTimeout(() => setAuditStepState("challenge", "done"), 620);
+                window.setTimeout(() => setAuditStepState("proof", "active"), 700);
+                window.setTimeout(() => setAuditStepState("proof", "done"), 960);
+
+                return new Promise((resolve) => {
+                    function tick(now) {
+                        const progress = Math.min(1, (now - startedAt) / duration);
+                        const audited = progress >= 1 ? total : Math.min(total, Math.floor(progress * total));
+
+                        progressCopy.textContent = `已审计 ${audited} 块，共 ${total} 块`;
+                        progressFill.style.width = `${Math.round(progress * 100)}%`;
+
+                        if (progress < 1) {
+                            window.setTimeout(() => window.requestAnimationFrame(tick), 80);
+                            return;
+                        }
+
+                        resolve();
+                    }
+
+                    window.requestAnimationFrame(tick);
+                });
+            }
+
+            function renderAuditVerification(data) {
+                const proofLeft = document.getElementById("auditProofLeft");
+                const proofRight = document.getElementById("auditProofRight");
+                const proofSymbol = document.getElementById("auditProofSymbol");
+                const verifyStatus = document.getElementById("auditVerifyStatus");
+                const left = String(data?.proof_left || "");
+                const right = String(data?.proof_right || "");
+
+                if (!proofLeft || !proofRight || !proofSymbol || !verifyStatus) {
+                    return;
+                }
+
+                proofLeft.textContent = left || "--";
+                proofRight.textContent = right || "--";
+                proofSymbol.textContent = left && right ? (left === right ? "=" : "!=") : "--";
+                verifyStatus.textContent = left && right ? `聚合验证结果：${statusText(data?.audit_result)}` : statusText(data?.audit_result);
+            }
+
             function renderAuditData(data, keyword) {
                 const result = document.getElementById("auditResult");
                 const resultBody = document.getElementById("auditResultBody");
@@ -313,6 +406,8 @@
 
                 button.disabled = true;
                 button.textContent = "审计中...";
+                resetAuditProcessDemo(challengeBlockCount);
+                const processDemo = playAuditProcessDemo(challengeBlockCount);
                 try {
                     const response = await fetch(`${API_BASE_URL}/home/audit`, {
                         method: "POST",
@@ -330,10 +425,14 @@
                         throw new Error(typeof data.detail === "string" ? data.detail : "审计失败");
                     }
 
+                    await processDemo;
                     sessionStorage.setItem(LAST_AUDIT_RESULT_KEY, JSON.stringify({ result: data, keyword }));
                     renderAuditData(data, keyword);
+                    renderAuditVerification(data);
                 } catch (error) {
+                    await processDemo;
                     const message = error.message === "Failed to fetch" ? "无法连接后端服务" : error.message;
+                    renderAuditVerification({ audit_result: message });
                     window.alert(message);
                 } finally {
                     button.disabled = false;
@@ -344,6 +443,17 @@
             window.setTimeout(loadAuditOptionsInline, 300);
             window.setTimeout(loadLatestAuditRecordInline, 500);
             window.setTimeout(() => {
+                document.getElementById("auditProcessClose")?.addEventListener("click", () => {
+                    const modal = document.getElementById("auditProcessModal");
+                    modal?.classList.remove("open");
+                    modal?.setAttribute("aria-hidden", "true");
+                });
+                document.getElementById("auditProcessModal")?.addEventListener("click", (event) => {
+                    if (event.target === event.currentTarget) {
+                        event.currentTarget.classList.remove("open");
+                        event.currentTarget.setAttribute("aria-hidden", "true");
+                    }
+                });
                 if (!window.__auditExternalScriptLoaded) {
                     document.getElementById("runAuditButton")?.addEventListener("click", (event) => runAuditInline(event));
                 }
